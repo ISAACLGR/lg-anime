@@ -11,7 +11,7 @@ let apiFireAnime: any = null;
 
 async function getApiFireAnime() {
   if (!apiFireAnime) {
-    const ApiFireAnime = (await import('../lib/api/animeFire/api-fire-anime')).default;
+    const ApiFireAnime = (await import('../lib/api/animeFire/api-fire-anime.js')).default;
     apiFireAnime = new ApiFireAnime();
   }
   return apiFireAnime;
@@ -167,7 +167,7 @@ app.get('/proxy-video', async (req, res) => {
       }
     }
 
-    const videoHeaders: any = {
+    const videoHeaders: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       'Referer': episodeUrl || 'https://animefire.io/',
       'Cookie': cookies
