@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm run build:web",
+  "outputDirectory": "dist",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "lib/api/animeFire/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/proxy-video", "destination": "/api/index" }
+  ],
+  "headers": [
+    {
+      "source": "/proxy-video",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Headers", "value": "Range" }
+      ]
+    }
+  ]
+}
