@@ -5,10 +5,17 @@ import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { registerOAuthRoutes } from '../server/_core/oauth';
 import { appRouter } from '../server/routers';
 import { createContext } from '../server/_core/context';
+import axios from 'axios';
 
-const ApiFireAnime = require('../lib/api/animeFire/api-fire-anime');
-const apiFireAnime = new ApiFireAnime();
-const axios = require('axios');
+let apiFireAnime: any = null;
+
+async function getApiFireAnime() {
+  if (!apiFireAnime) {
+    const ApiFireAnime = (await import('../lib/api/animeFire/api-fire-anime')).default;
+    apiFireAnime = new ApiFireAnime();
+  }
+  return apiFireAnime;
+}
 
 const app = express();
 
@@ -43,7 +50,8 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/animefire/em-lancamento/:page?', async (req, res) => {
   try {
-    const result = await apiFireAnime.emLancamento(req);
+    const api = await getApiFireAnime();
+    const result = await api.emLancamento(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] em-lancamento error:', error);
@@ -53,7 +61,8 @@ app.get('/api/animefire/em-lancamento/:page?', async (req, res) => {
 
 app.get('/api/animefire/top-animes/:page?', async (req, res) => {
   try {
-    const result = await apiFireAnime.topAnimes(req);
+    const api = await getApiFireAnime();
+    const result = await api.topAnimes(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] top-animes error:', error);
@@ -63,7 +72,8 @@ app.get('/api/animefire/top-animes/:page?', async (req, res) => {
 
 app.get('/api/animefire/pesquisar', async (req, res) => {
   try {
-    const result = await apiFireAnime.pesquisar(req);
+    const api = await getApiFireAnime();
+    const result = await api.pesquisar(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] pesquisar error:', error);
@@ -73,7 +83,8 @@ app.get('/api/animefire/pesquisar', async (req, res) => {
 
 app.get('/api/animefire/animes-atualizados/:page?', async (req, res) => {
   try {
-    const result = await apiFireAnime.animesAtualizados(req);
+    const api = await getApiFireAnime();
+    const result = await api.animesAtualizados(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] animes-atualizados error:', error);
@@ -83,7 +94,8 @@ app.get('/api/animefire/animes-atualizados/:page?', async (req, res) => {
 
 app.get('/api/animefire/lista-de-animes-legendados/:page?', async (req, res) => {
   try {
-    const result = await apiFireAnime.listaDeAnimesLegendados(req);
+    const api = await getApiFireAnime();
+    const result = await api.listaDeAnimesLegendados(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] lista-de-animes-legendados error:', error);
@@ -93,7 +105,8 @@ app.get('/api/animefire/lista-de-animes-legendados/:page?', async (req, res) => 
 
 app.get('/api/animefire/lista-de-animes-dublados/:page?', async (req, res) => {
   try {
-    const result = await apiFireAnime.listaDeAnimesDublados(req);
+    const api = await getApiFireAnime();
+    const result = await api.listaDeAnimesDublados(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] lista-de-animes-dublados error:', error);
@@ -103,7 +116,8 @@ app.get('/api/animefire/lista-de-animes-dublados/:page?', async (req, res) => {
 
 app.get('/api/animefire/getEpisodio', async (req, res) => {
   try {
-    const result = await apiFireAnime.getEpisodio(req);
+    const api = await getApiFireAnime();
+    const result = await api.getEpisodio(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] getEpisodio error:', error);
@@ -113,7 +127,8 @@ app.get('/api/animefire/getEpisodio', async (req, res) => {
 
 app.get('/api/animefire/extractVideo', async (req, res) => {
   try {
-    const result = await apiFireAnime.extractVideo(req);
+    const api = await getApiFireAnime();
+    const result = await api.extractVideo(req);
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] extractVideo error:', error);
@@ -125,13 +140,13 @@ app.get('/proxy-video', async (req, res) => {
   try {
     const { videoUrl, episodeUrl } = req.query;
     if (!videoUrl) {
-      return res.status(400).json({ error: 'URL do video � obrigat�ria' });
+      return res.status(400).json({ error: 'URL do video é obrigatória' });
     }
-    console.log('? Proxy para video:', videoUrl);
+    console.log('🎬 Proxy para video:', videoUrl);
 
     const range = req.headers.range;
     if (range) {
-      console.log('? Range request:', range);
+      console.log('📡 Range request:', range);
     }
 
     let cookies = '';
@@ -145,7 +160,7 @@ app.get('/proxy-video', async (req, res) => {
         const setCookieHeaders = pageResponse.headers['set-cookie'];
         if (setCookieHeaders) {
           cookies = setCookieHeaders.map((cookie: string) => cookie.split(';')[0]).join('; ');
-          console.log('? Cookies obtidos:', cookies);
+          console.log('🍪 Cookies obtidos:', cookies);
         }
       } catch (error: any) {
         console.error('Erro ao obter cookies:', error.message);
@@ -175,7 +190,7 @@ app.get('/proxy-video', async (req, res) => {
       res.setHeader('Content-Range', videoResponse.headers['content-range']);
       res.setHeader('Content-Length', videoResponse.headers['content-length'] || '');
       res.status(206);
-      console.log('? Streaming parcial (206):', videoResponse.headers['content-range']);
+      console.log('📀 Streaming parcial (206):', videoResponse.headers['content-range']);
     } else {
       res.setHeader('Content-Length', videoResponse.headers['content-length'] || '');
       res.status(200);
@@ -187,7 +202,7 @@ app.get('/proxy-video', async (req, res) => {
     videoResponse.data.pipe(res);
 
   } catch (error: any) {
-    console.error('? Erro no proxy de video:', error.message);
+    console.error('❌ Erro no proxy de video:', error.message);
     res.status(500).json({ error: 'Erro ao acessar video via proxy' });
   }
 });
