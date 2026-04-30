@@ -162,7 +162,7 @@ app.get('/proxy-video', async (req, res) => {
 
     const videoHeaders: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Referer': episodeUrl || 'https://animefire.io/',
+      'Referer': (episodeUrl as string) || 'https://animefire.io/',
       'Cookie': cookies
     };
 
@@ -175,17 +175,17 @@ app.get('/proxy-video', async (req, res) => {
       responseType: 'stream'
     });
 
-    res.setHeader('Content-Type', videoResponse.headers['content-type'] || 'video/mp4');
+    res.setHeader('Content-Type', String(videoResponse.headers['content-type'] || 'video/mp4'));
     res.setHeader('Content-Disposition', 'inline; filename="video.mp4"');
     res.setHeader('Accept-Ranges', 'bytes');
 
     if (videoResponse.headers['content-range']) {
-      res.setHeader('Content-Range', videoResponse.headers['content-range']);
-      res.setHeader('Content-Length', videoResponse.headers['content-length'] || '');
+      res.setHeader('Content-Range', String(videoResponse.headers['content-range']));
+      res.setHeader('Content-Length', String(videoResponse.headers['content-length'] || ''));
       res.status(206);
       console.log('📀 Streaming parcial (206):', videoResponse.headers['content-range']);
     } else {
-      res.setHeader('Content-Length', videoResponse.headers['content-length'] || '');
+      res.setHeader('Content-Length', String(videoResponse.headers['content-length'] || ''));
       res.status(200);
     }
 
