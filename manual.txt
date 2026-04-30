@@ -1,0 +1,7 @@
+# Deploy automático (recomendado)
+git add .
+git commit -m "Configura Vercel build"
+git push
+
+# Ou deploy manual direto
+pnpm dlx vercel@latest --yes
