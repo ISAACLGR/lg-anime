@@ -6,7 +6,11 @@
   "framework": null,
   "functions": {
     "api/index.ts": {
-      "includeFiles": "lib/api/animeFire/**"
+      "includeFiles": [
+        "lib/**",
+        "server/**",
+        "shared/**"
+      ]
     }
   },
   "rewrites": [
