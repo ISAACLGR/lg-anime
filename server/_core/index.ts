@@ -65,7 +65,6 @@ async function startServer() {
         res.json({ok: true, timestamp: Date.now()});
     });
 
-    // Rotas com animefire (minúsculo) - compatibilidade com local
     app.get("/api/animefire/em-lancamento/:page?", async (req, res) => {
         try {
             const result = await apiFireAnime.emLancamento(req);
@@ -131,7 +130,7 @@ async function startServer() {
             const result = await apiFireAnime.getEpisodio(req);
             res.json(result);
         } catch (error) {
-            console.error("[AnimeFire] getEpisodio error:", error);
+            console.error("[AnimeFire] lista-de-animes-dublados error:", error);
             res.status(500).json({error: "Failed to fetch data from AnimeFire"});
         }
     });
@@ -141,88 +140,7 @@ async function startServer() {
             const result = await apiFireAnime.extractVideo(req);
             res.json(result);
         } catch (error) {
-            console.error("[AnimeFire] extractVideo error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    // Rotas com animeFire (maiúsculo) - compatibilidade com Vercel
-    app.get("/api/animeFire/em-lancamento/:page?", async (req, res) => {
-        try {
-            const result = await apiFireAnime.emLancamento(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] em-lancamento error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animeFire/top-animes/:page?", async (req, res) => {
-        try {
-            const result = await apiFireAnime.topAnimes(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] top-animes error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animeFire/pesquisar", async (req, res) => {
-        try {
-            const result = await apiFireAnime.pesquisar(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] pesquisar error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animeFire/animes-atualizados/:page?", async (req, res) => {
-        try {
-            const result = await apiFireAnime.animesAtualizados(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] animes-atualizados error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animeFire/lista-de-animes-legendados/:page?", async (req, res) => {
-        try {
-            const result = await apiFireAnime.listaDeAnimesLegendados(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] lista-de-animes-legendados error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animeFire/lista-de-animes-dublados/:page?", async (req, res) => {
-        try {
-            const result = await apiFireAnime.listaDeAnimesDublados(req);
-            res.json(result);
-        } catch (error) {
             console.error("[AnimeFire] lista-de-animes-dublados error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animeFire/getEpisodio", async (req, res) => {
-        try {
-            const result = await apiFireAnime.getEpisodio(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] getEpisodio error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animeFire/extractVideo", async (req, res) => {
-        try {
-            const result = await apiFireAnime.extractVideo(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] extractVideo error:", error);
             res.status(500).json({error: "Failed to fetch data from AnimeFire"});
         }
     });
