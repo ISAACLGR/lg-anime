@@ -8,23 +8,29 @@ export const ADMOB_CONFIG = {
   publisherId: "pub-7213751684524160",
   clientId: "277794",
 
-  // Ad Unit IDs (você precisa criar estes no console do AdMob)
+  // AdSense IDs para web
+  adSense: {
+    client: "ca-pub-7213751684524160",
+    slot: "8919461756",
+  },
+
+  // Ad Unit IDs (IDs reais do console do AdMob)
   // Formato: ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx
   adUnitIds: {
     // Interstitial ads (tela cheia) - para episódios
     interstitial: {
-      android: "ca-app-pub-3940256099942544/1033173712", // Test ad unit
-      ios: "ca-app-pub-3940256099942544/4411468910", // Test ad unit
+      android: "ca-app-pub-7213751684524160/8919461756", // ID real fornecido
+      ios: "ca-app-pub-7213751684524160/8919461756",     // ID real fornecido
     },
-    // Banner ads (rodapé)
+    // Banner ads (rodapé) - crie no console AdMob se necessário
     banner: {
-      android: "ca-app-pub-3940256099942544/6300978111", // Test ad unit
-      ios: "ca-app-pub-3940256099942544/2934735716", // Test ad unit
+      android: "ca-app-pub-7213751684524160/8919461756", // Usar mesmo ID temporariamente
+      ios: "ca-app-pub-7213751684524160/8919461756",     // Usar mesmo ID temporariamente
     },
-    // Rewarded ads (com recompensa)
+    // Rewarded ads (com recompensa) - crie no console AdMob se necessário
     rewarded: {
-      android: "ca-app-pub-3940256099942544/5224354917", // Test ad unit
-      ios: "ca-app-pub-3940256099942544/1712485313", // Test ad unit
+      android: "ca-app-pub-7213751684524160/8919461756", // Usar mesmo ID temporariamente
+      ios: "ca-app-pub-7213751684524160/8919461756",     // Usar mesmo ID temporariamente
     },
   },
 
@@ -41,9 +47,9 @@ export const ADMOB_CONFIG = {
   // Configurações de teste
   testing: {
     // Usar ad units de teste (não gera receita)
-    useTestAds: true,
+    useTestAds: false,
     // Log detalhado
-    enableDebugLogging: true,
+    enableDebugLogging: false,
   },
 };
 

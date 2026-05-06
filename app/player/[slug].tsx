@@ -35,7 +35,7 @@ export default function PlayerScreen() {
   const [videoData, setVideoData] = useState<any>(null);
   const [useWebView, setUseWebView] = useState(false);
 
-  const { shouldShowAd } = useAdMobAds();
+  const { shouldShowAd, isAdReady, isAdLoading, interstitial, isWeb, frequencyData } = useAdMobAds();
 
   // Fallback video URL (usado se extractVideo falhar)
   const fallbackVideoUrl =
@@ -618,8 +618,18 @@ const extractVideoData = async () => {
       }
 
       // Mostrar anúncio se necessário
+      console.log('🎯 Verificando se deve mostrar anúncio:', {
+        episodeCount: frequencyData.episodeCount,
+        shouldShow: shouldShowAd(),
+        isWeb,
+        isAdReady
+      });
+      
       if (shouldShowAd()) {
+        console.log('🚀 Mostrando anúncio!');
         setShowAd(true);
+      } else {
+        console.log('⏭️ Anúncio não necessário neste episódio');
       }
 
       setLoading(false);
@@ -687,7 +697,13 @@ const extractVideoData = async () => {
 
   return (
     <>
-      <AdModal visible={showAd} onClose={handleAdClose} />
+      <AdModal 
+        visible={showAd} 
+        onClose={handleAdClose} 
+        isLoading={isAdLoading}
+        interstitial={interstitial}
+        isWeb={isWeb}
+      />
       <ScreenContainer className="p-0 bg-black">
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Video Player */}

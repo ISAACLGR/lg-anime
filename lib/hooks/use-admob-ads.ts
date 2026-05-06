@@ -1,71 +1,147 @@
+import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 
-// AdMob IDs
-const ADMOB_PUBLISHER_ID = "pub-7213751684524160";
-const ADMOB_CLIENT_ID = "277794";
+// Detectar se está na web
+const isWeb = Platform.OS === "web" || typeof window !== "undefined";
 
-// Ad unit IDs (you'll need to create these in AdMob console)
-// For testing, use test ad unit IDs
-const TEST_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx";
-
-// Storage key for tracking ad frequency
-const AD_FREQUENCY_KEY = "@animfire:ad_frequency";
-
-export interface AdFrequencyData {
+// Interface para dados de frequência de anúncios
+interface AdFrequencyData {
   lastAdShownAt: number;
   episodeCount: number;
 }
 
+// Chave para armazenamento local
+const AD_FREQUENCY_KEY = "@animfire:ad_frequency";
+
 /**
- * Hook para gerenciar anúncios do Google AdMob
- * Mostra anúncios interstitial a cada 3 episódios (1º, 4º, 7º, etc.)
+ * Hook unificado para gerenciar anúncios AdMob (mobile) e AdSense (web)
+ * Detecta automaticamente a plataforma e usa o SDK apropriado
  */
 export function useAdMobAds() {
   const [isAdReady, setIsAdReady] = useState(false);
   const [isAdLoading, setIsAdLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [interstitial, setInterstitial] = useState<any>(null);
   const [frequencyData, setFrequencyData] = useState<AdFrequencyData>({
     lastAdShownAt: 0,
     episodeCount: 0,
   });
 
-  // Load frequency data from AsyncStorage on mount
-  useEffect(() => {
-    loadFrequencyData();
-  }, []);
-
+  // Carregar dados de frequência do AsyncStorage
   const loadFrequencyData = useCallback(async () => {
     try {
-      const data = await AsyncStorage.getItem(AD_FREQUENCY_KEY);
-      if (data) {
-        setFrequencyData(JSON.parse(data));
+      const stored = await AsyncStorage.getItem(AD_FREQUENCY_KEY);
+      if (stored) {
+        setFrequencyData(JSON.parse(stored));
       }
     } catch (err) {
-      console.error("Error loading ad frequency data:", err);
+      console.error("Error loading frequency data:", err);
     }
   }, []);
 
+  // Salvar dados de frequência no AsyncStorage
   const saveFrequencyData = useCallback(async (data: AdFrequencyData) => {
     try {
       await AsyncStorage.setItem(AD_FREQUENCY_KEY, JSON.stringify(data));
       setFrequencyData(data);
     } catch (err) {
-      console.error("Error saving ad frequency data:", err);
+      console.error("Error saving frequency data:", err);
     }
   }, []);
 
+  // Carregar anúncio interstitial
+  const loadInterstitialAd = useCallback(async () => {
+    if (isWeb) {
+      // Web: prepara anúncio AdSense (sem SDK nativo)
+      try {
+        setIsAdLoading(true);
+        setError(null);
+
+        console.log("Preparing web ad slot...");
+        
+        // Pequeno delay para simulação
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setIsAdReady(true);
+        setIsAdLoading(false);
+        console.log("Web ad ready (simulated)");
+      } catch (err) {
+        console.error("Error preparing web ad:", err);
+        setError(err instanceof Error ? err.message : "Failed to prepare ad");
+        setIsAdReady(false);
+        setIsAdLoading(false);
+      }
+    } else {
+      // Mobile: usa SDK AdMob (só executa em mobile)
+      try {
+        setIsAdLoading(true);
+        setError(null);
+
+        // Verificar se está em mobile antes de importar
+        if (Platform.OS === "ios" || Platform.OS === "android") {
+          // Importação dinâmica segura só em mobile
+          const AdMob = eval('require')("react-native-google-mobile-ads");
+          const MobileAds = AdMob.default;
+          const InterstitialAd = AdMob.InterstitialAd;
+          
+          // Configurar AdMob
+          await MobileAds().initialize();
+          
+          // Criar anúncio interstitial
+          const adUnitId = __DEV__ 
+            ? "ca-app-pub-3940256099942544/1033173712" // Test Ad Unit ID
+            : "ca-app-pub-7213751684524160/8919461756"; // Production Ad Unit ID
+
+          const ad = InterstitialAd.createForAdRequest(adUnitId, {
+            requestNonPersonalizedAdsOnly: true,
+          });
+
+          ad.addAdEventListener("adLoaded", () => {
+            setIsAdReady(true);
+            setIsAdLoading(false);
+            console.log("Mobile ad loaded successfully");
+          });
+
+          ad.addAdEventListener("adFailedToLoad", (error: any) => {
+            setError(error.message);
+            setIsAdReady(false);
+            setIsAdLoading(false);
+            console.error("Mobile ad failed to load:", error);
+          });
+
+          ad.addAdEventListener("adClosed", () => {
+            setIsAdReady(false);
+            loadInterstitialAd(); // Preparar próximo anúncio
+          });
+
+          await ad.load();
+          setInterstitial(ad);
+        } else {
+          // Plataforma desconhecida, simula como web
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setIsAdReady(true);
+          setIsAdLoading(false);
+        }
+      } catch (err) {
+        console.error("Error preparing mobile ad:", err);
+        setError(err instanceof Error ? err.message : "Failed to prepare mobile ad");
+        setIsAdReady(false);
+        setIsAdLoading(false);
+      }
+    }
+  }, [isWeb]);
+
   /**
    * Determina se um anúncio deve ser exibido
-   * Retorna true a cada 3 episódios (1º, 4º, 7º, etc.)
+   * Agora mostra anúncio a cada episódio
    */
   const shouldShowAd = useCallback((): boolean => {
     // Incrementar contador de episódios
     const newEpisodeCount = frequencyData.episodeCount + 1;
 
-    // Mostrar anúncio se episodeCount % 3 === 1 (1, 4, 7, 10, ...)
-    const show = newEpisodeCount % 3 === 1;
+    // Mostrar anúncio em TODOS os episódios
+    const show = true;
 
     // Atualizar dados de frequência
     const newData: AdFrequencyData = {
@@ -78,92 +154,38 @@ export function useAdMobAds() {
     return show;
   }, [frequencyData, saveFrequencyData]);
 
-  /**
-   * Carregar anúncio interstitial
-   * Nota: Esta é uma implementação simplificada
-   * Em produção, você precisará configurar os Ad Unit IDs no console do AdMob
-   */
-  const loadInterstitialAd = useCallback(async () => {
-    if (!Platform.OS || Platform.OS === "web") {
-      console.log("Ads not supported on web platform");
-      return;
+  // Mostrar anúncio interstitial
+  const showInterstitialAd = useCallback(() => {
+    if (isWeb) {
+      // Web: o componente WebInterstitialAd cuida da exibição
+      console.log("Web ad should be shown via WebInterstitialAd component");
+      return true;
+    } else {
+      // Mobile: usa SDK AdMob
+      if (interstitial && isAdReady) {
+        interstitial.show();
+        return true;
+      }
+      return false;
     }
+  }, [isWeb, interstitial, isAdReady]);
 
-    try {
-      setIsAdLoading(true);
-      setError(null);
-
-      // Aqui você implementaria a lógica real de carregamento do AdMob
-      // Por enquanto, simulamos um carregamento bem-sucedido
-      console.log("Loading interstitial ad...");
-
-      // Simular delay de carregamento
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setIsAdReady(true);
-    } catch (err) {
-      console.error("Error loading interstitial ad:", err);
-      setError(err instanceof Error ? err.message : "Failed to load ad");
-      setIsAdReady(false);
-    } finally {
-      setIsAdLoading(false);
-    }
-  }, []);
-
-  /**
-   * Exibir anúncio interstitial
-   * Retorna uma Promise que resolve quando o anúncio é fechado
-   */
-  const showInterstitialAd = useCallback(async (): Promise<void> => {
-    if (!shouldShowAd()) {
-      console.log("Ad frequency not reached yet");
-      return;
-    }
-
-    if (!isAdReady && !isAdLoading) {
-      await loadInterstitialAd();
-    }
-
-    if (!isAdReady) {
-      console.log("Ad not ready");
-      return;
-    }
-
-    try {
-      // Aqui você implementaria a exibição real do anúncio
-      console.log("Showing interstitial ad...");
-
-      // Simular exibição do anúncio
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      setIsAdReady(false);
-    } catch (err) {
-      console.error("Error showing interstitial ad:", err);
-      setError(err instanceof Error ? err.message : "Failed to show ad");
-    }
-  }, [shouldShowAd, isAdReady, isAdLoading, loadInterstitialAd]);
-
-  /**
-   * Resetar contador de episódios (útil para testes)
-   */
-  const resetFrequency = useCallback(async () => {
-    const newData: AdFrequencyData = {
-      lastAdShownAt: 0,
-      episodeCount: 0,
-    };
-    await saveFrequencyData(newData);
-  }, [saveFrequencyData]);
+  // Carregar dados iniciais quando o componente montar
+  useEffect(() => {
+    loadFrequencyData();
+    // Carregar anúncio para ambas as plataformas
+    loadInterstitialAd();
+  }, [loadFrequencyData, loadInterstitialAd, isWeb]);
 
   return {
     isAdReady,
     isAdLoading,
     error,
-    frequencyData,
+    interstitial,
+    isWeb,
     shouldShowAd,
-    loadInterstitialAd,
     showInterstitialAd,
-    resetFrequency,
-    publisherId: ADMOB_PUBLISHER_ID,
-    clientId: ADMOB_CLIENT_ID,
+    frequencyData,
+    loadInterstitialAd,
   };
 }

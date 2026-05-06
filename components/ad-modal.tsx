@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { Modal, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { WebInterstitialAd } from "./web-ads";
 
 interface AdModalProps {
   visible: boolean;
   onClose: () => void;
   isLoading?: boolean;
+  interstitial?: any;
+  isWeb?: boolean;
 }
 
 /**
  * Componente modal para exibir anúncios interstitial
  * Mostra um placeholder enquanto o anúncio está carregando
  */
-export function AdModal({ visible, onClose, isLoading = false }: AdModalProps) {
+export function AdModal({ visible, onClose, isLoading = false, interstitial, isWeb = false }: AdModalProps) {
   const colors = useColors();
   const [displayTime, setDisplayTime] = useState(0);
   const MIN_DISPLAY_TIME = 3000; // Mínimo 3 segundos
@@ -36,6 +39,18 @@ export function AdModal({ visible, onClose, isLoading = false }: AdModalProps) {
     }
   };
 
+  // Para web, usar componente WebInterstitialAd
+  if (isWeb) {
+    return (
+      <WebInterstitialAd
+        onAdClosed={onClose}
+        adClient="ca-pub-7213751684524160" // Seu AdSense Client ID
+        adSlot="8919461756" // Seu AdSense Slot ID
+      />
+    );
+  }
+
+  // Para mobile, usar modal original
   return (
     <Modal
       visible={visible}
@@ -78,27 +93,31 @@ export function AdModal({ visible, onClose, isLoading = false }: AdModalProps) {
             </>
           ) : (
             <>
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 24,
-                  fontWeight: "bold",
-                  marginBottom: 16,
-                }}
-              >
-                Anúncio
-              </Text>
-              <Text
-                style={{
-                  color: colors.muted,
-                  fontSize: 14,
-                  textAlign: "center",
-                  marginHorizontal: 16,
-                  marginBottom: 32,
-                }}
-              >
-                Anúncio do Google AdMob será exibido aqui
-              </Text>
+              {/* Anúncio real do AdMob */}
+              {interstitial && (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <Text
+                    style={{
+                      color: colors.primary,
+                      fontSize: 16,
+                      marginBottom: 16,
+                    }}
+                  >
+                    Anúncio carregado com sucesso!
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontSize: 12,
+                      textAlign: "center",
+                      marginHorizontal: 16,
+                      marginBottom: 32,
+                    }}
+                  >
+                    O anúncio será exibido em tela cheia automaticamente
+                  </Text>
+                </View>
+              )}
 
               {/* Close Button */}
               <TouchableOpacity

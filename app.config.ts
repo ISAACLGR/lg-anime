@@ -120,6 +120,16 @@ const config: ExpoConfig = {
         },
       },
     ],
+    // Plugin condicional para mobile apenas
+    ...(process.env.EXPO_PLATFORM !== 'web' ? [
+      [
+        "react-native-google-mobile-ads",
+        {
+          android_app_id: "ca-app-pub-7213751684524160~2517549403",
+          ios_app_id: "ca-app-pub-7213751684524160~2517549403",
+        },
+      ],
+    ] : []),
   ],
   experiments: {
     typedRoutes: true,
