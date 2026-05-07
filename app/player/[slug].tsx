@@ -603,15 +603,28 @@ const extractVideoData = async () => {
           console.log('✅ Usando videoUrl direto:', videoUrl);
           console.log('🎬 Episode URL para proxy:', episodeUrl);
           
-          // Usar URL direta - o WebVideoPlayer vai construir o proxy URL se necessário
-          setVideoData({
-            videoUrl: videoUrl,
-            iframeSrc: iframeSrc || null,
-            allQualities: data.allQualities || [],
-            episodeUrl: episodeUrl,  // Importante: passar episodeUrl para construir proxy URL
-            method: data.method || 'direct-video',
-            originalVideoUrl: videoUrl
-          });
+          // MOBILE: Forçar uso de iframe para melhor compatibilidade
+          if (Platform.OS !== 'web' && iframeSrc) {
+            console.log('📱 MOBILE detectado - Forçando uso de iframe para compatibilidade');
+            setUseWebView(true);
+            setVideoData({
+              videoUrl: null,
+              iframeSrc: iframeSrc,
+              allQualities: data.allQualities || [],
+              episodeUrl: data.episodeUrl || episodeUrl,
+              method: 'webview-iframe-mobile'
+            });
+          } else {
+            // WEB: Usar URL direta - o WebVideoPlayer vai construir o proxy URL se necessário
+            setVideoData({
+              videoUrl: videoUrl,
+              iframeSrc: iframeSrc || null,
+              allQualities: data.allQualities || [],
+              episodeUrl: episodeUrl,
+              method: data.method || 'direct-video',
+              originalVideoUrl: videoUrl
+            });
+          }
         } else {
           setError('Nenhuma fonte de vídeo encontrada');
         }
