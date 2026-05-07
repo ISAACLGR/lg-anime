@@ -1,8 +1,9 @@
-import { ScrollView, Text, View, TouchableOpacity, ActivityIndicator, Image, FlatList } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, ActivityIndicator, Image, FlatList, Dimensions } from "react-native";
 import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useRouter } from "expo-router";
 import { animeFireClient } from "@/lib/api/animeFire/anime-fire-client";
+import { Platform } from "react-native";
 
 interface AnimeDisplay {
   title: string;
@@ -10,6 +11,69 @@ interface AnimeDisplay {
   classification?: string;
   score?: string;
   link: string;
+}
+
+interface FilterState {
+  letra: string;
+  ano: string;
+  score: string;
+  classificacao: string;
+}
+
+const LETRAS = ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+const ANOS = ['', '2026', '2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010', '2009', '2008', '2007', '2006', '2005', '2004', '2003', '2002', '2001', '2000', '1999', '1998', '1997', '1996', '1995', '1994', '1993', '1992', '1991', '1990', '1989', '1988', '1987', '1986', '1985', '1984', '1983', '1982', '1981', '1980', '1979', '1978', '1977', '1976', '1975', '1974', '1973', '1972', '1971', '1970', '1969'];
+const SCORES = ['', '9', '8', '7', '6', '5', '4', '3', '2', '1'];
+const CLASSIFICACOES = [
+  { value: '', label: 'Classificação' },
+  { value: 'L', label: 'L - Livre' },
+  { value: 'A10', label: 'A10 - 10 anos' },
+  { value: 'A12', label: 'A12 - 12 anos' },
+  { value: 'A14', label: 'A14 - 14 anos' },
+  { value: 'A16', label: 'A16 - 16 anos' },
+  { value: 'A18', label: 'A18 - 18 anos' }
+];
+
+// Componente responsivo de listagem
+function AnimeList({ animes, renderAnimeCard }: { animes: AnimeDisplay[], renderAnimeCard: ({ item }: { item: AnimeDisplay }) => JSX.Element }) {
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const isWeb = Platform.OS === 'web';
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  // Mobile: rolagem horizontal
+  if (!isWeb || screenWidth < 768) {
+    return (
+      <FlatList
+        data={animes}
+        renderItem={renderAnimeCard}
+        keyExtractor={(item) => item.link}
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingRight: 20, gap: 8 }}
+      />
+    );
+  }
+  
+  // Web/Desktop: grid com rolagem vertical
+  const numColumns = Math.floor(screenWidth / 170); // 150px card + gap
+  
+  return (
+    <FlatList
+      data={animes}
+      renderItem={renderAnimeCard}
+      keyExtractor={(item) => item.link}
+      numColumns={numColumns}
+      horizontal={false}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 20 }}
+      columnWrapperStyle={{ gap: 8 }}
+    />
+  );
 }
 
 export default function ExploreScreen() {
@@ -21,41 +85,55 @@ export default function ExploreScreen() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalAnimes, setTotalAnimes] = useState(0);
+  const [filters, setFilters] = useState<FilterState>({
+    letra: '',
+    ano: '',
+    score: '',
+    classificacao: ''
+  });
 
   useEffect(() => {
     loadAnimes(1);
   }, []);
 
-  const loadAnimes = async (pageNum: number) => {
+  const loadAnimes = async (pageNum: number, category?: string, activeFilters?: FilterState) => {
     try {
       setLoading(true);
       setError(null);
       
       let response;
+      const cat = category || selectedCategory;
+      const currentFilters = activeFilters || filters;
+      const filterParams = {
+        letra: currentFilters.letra || undefined,
+        ano: currentFilters.ano || undefined,
+        score: currentFilters.score || undefined,
+        classificacao: currentFilters.classificacao || undefined
+      };
       
-      switch (selectedCategory) {
+      switch (cat) {
         case "em-lancamento":
-          response = await animeFireClient.emLancamento(pageNum);
+          response = await animeFireClient.emLancamento(pageNum, filterParams);
           break;
         case "animes-atualizados":
-          response = await animeFireClient.animesAtualizados(pageNum);
+          response = await animeFireClient.animesAtualizados(pageNum, filterParams);
           break;
         case "top-animes":
-          response = await animeFireClient.topAnimes(pageNum);
+          response = await animeFireClient.topAnimes(pageNum, filterParams);
           break;
         case "legendados":
-          response = await animeFireClient.listaDeAnimesLegendados(pageNum);
+          response = await animeFireClient.listaDeAnimesLegendados(pageNum, filterParams);
           break;
         case "dublados":
-          response = await animeFireClient.listaDeAnimesDublados(pageNum);
+          response = await animeFireClient.listaDeAnimesDublados(pageNum, filterParams);
           break;
         default:
-          response = await animeFireClient.emLancamento(pageNum);
+          response = await animeFireClient.emLancamento(pageNum, filterParams);
       }
       
       const formatted = response.results;
       setAnimes(formatted);
-      setCurrentPage(response.pagination?.currentPage || pageNum);
+      setCurrentPage(pageNum);
       setTotalPages(response.pagination?.totalPages || 1);
       setTotalAnimes(response.total || 0);
     } catch (err) {
@@ -75,9 +153,27 @@ export default function ExploreScreen() {
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     setCurrentPage(1);
-    setAnimes([]); // Limpa a lista ao trocar categoria
-    setLoading(true); // Mostra indicador imediatamente
-    loadAnimes(1);
+    setAnimes([]);
+    setLoading(true);
+    loadAnimes(1, category);
+  };
+
+  const handleFilterChange = (key: keyof FilterState, value: string) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    setCurrentPage(1);
+    setAnimes([]);
+    setLoading(true);
+    loadAnimes(1, undefined, newFilters);
+  };
+
+  const clearFilters = () => {
+    const emptyFilters = { letra: '', ano: '', score: '', classificacao: '' };
+    setFilters(emptyFilters);
+    setCurrentPage(1);
+    setAnimes([]);
+    setLoading(true);
+    loadAnimes(1, undefined, emptyFilters);
   };
 
   const handlePageChange = (pageNum: number) => {
@@ -197,6 +293,80 @@ export default function ExploreScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+
+          {/* Filtros */}
+          <View className="mt-4 pt-4 border-t border-border">
+            <View className="flex-row flex-wrap gap-2">
+              {/* Letra */}
+              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 80 }}>
+                <select
+                  value={filters.letra}
+                  onChange={(e) => handleFilterChange('letra', e.target.value)}
+                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                  style={{ border: 'none', background: 'transparent' }}
+                >
+                  <option value="">Letra</option>
+                  {LETRAS.slice(1).map(l => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </View>
+
+              {/* Ano */}
+              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 90 }}>
+                <select
+                  value={filters.ano}
+                  onChange={(e) => handleFilterChange('ano', e.target.value)}
+                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                  style={{ border: 'none', background: 'transparent' }}
+                >
+                  <option value="">Ano</option>
+                  {ANOS.slice(1).map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </View>
+
+              {/* Score */}
+              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 85 }}>
+                <select
+                  value={filters.score}
+                  onChange={(e) => handleFilterChange('score', e.target.value)}
+                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                  style={{ border: 'none', background: 'transparent' }}
+                >
+                  <option value="">Score</option>
+                  {SCORES.slice(1).map(s => (
+                    <option key={s} value={s}>{s}+</option>
+                  ))}
+                </select>
+              </View>
+
+              {/* Classificação */}
+              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 130 }}>
+                <select
+                  value={filters.classificacao}
+                  onChange={(e) => handleFilterChange('classificacao', e.target.value)}
+                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                  style={{ border: 'none', background: 'transparent' }}
+                >
+                  {CLASSIFICACOES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </View>
+
+              {/* Limpar Filtros */}
+              {(filters.letra || filters.ano || filters.score || filters.classificacao) && (
+                <TouchableOpacity
+                  onPress={clearFilters}
+                  className="bg-primary px-3 py-2 rounded-lg"
+                >
+                  <Text className="text-white text-sm font-semibold">Limpar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
 
         <View className="mt-4 px-4">
@@ -223,17 +393,7 @@ export default function ExploreScreen() {
               </Text>
             </View>
           ) : animes.length > 0 ? (
-            <FlatList
-              data={animes}
-              renderItem={renderAnimeCard}
-              keyExtractor={(item) => item.link}
-              horizontal={false}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              scrollEventThrottle={16}
-              numColumns={4}
-              columnWrapperStyle={{ gap: 8 }}
-            />
+            <AnimeList animes={animes} renderAnimeCard={renderAnimeCard} />
           ) : (
             <View className="py-8 items-center">
               <Text className="text-muted text-center">Nenhum anime encontrado</Text>

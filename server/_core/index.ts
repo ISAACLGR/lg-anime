@@ -145,6 +145,40 @@ async function startServer() {
         }
     });
 
+    // Cache stats endpoint
+    app.get("/api/animefire/cache/stats", async (_req, res) => {
+        try {
+            const ClienteAnimeFire = require("../../lib/api/animeFire/cliente-anime-fire");
+            const cliente = new ClienteAnimeFire();
+            const stats = await cliente.getCacheStats();
+            res.json({
+                success: true,
+                timestamp: new Date().toISOString(),
+                cache: stats
+            });
+        } catch (error: any) {
+            console.error("[Cache] Error getting stats:", error);
+            res.status(500).json({error: "Failed to get cache stats"});
+        }
+    });
+
+    // Clear cache endpoint
+    app.post("/api/animefire/cache/clear", async (_req, res) => {
+        try {
+            const ClienteAnimeFire = require("../../lib/api/animeFire/cliente-anime-fire");
+            const cliente = new ClienteAnimeFire();
+            await cliente.clearCache();
+            res.json({
+                success: true,
+                message: "Cache cleared successfully",
+                timestamp: new Date().toISOString()
+            });
+        } catch (error: any) {
+            console.error("[Cache] Error clearing cache:", error);
+            res.status(500).json({error: "Failed to clear cache"});
+        }
+    });
+
     // Proxy para v?deos com cookies, headers e Range Requests (suporte a seek)
     app.get('/proxy-video', async (req, res) => {
         try {

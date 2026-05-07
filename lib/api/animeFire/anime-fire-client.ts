@@ -23,11 +23,26 @@ interface AnimeFireResponse {
   };
 }
 
+interface FilterParams {
+  letra?: string;
+  ano?: string;
+  score?: string;
+  classificacao?: string;
+}
+
 class AnimeFireClient {
-  private async fetchFromServer(endpoint: string, page?: number): Promise<AnimeFireResponse> {
+  private async fetchFromServer(endpoint: string, page?: number, filters?: FilterParams): Promise<AnimeFireResponse> {
     try {
-      const url = page 
-        ? `${API_BASE_URL}/api/animefire/${endpoint}?page=${page}`
+      const params = new URLSearchParams();
+      if (page) params.append('page', page.toString());
+      if (filters?.letra) params.append('letra', filters.letra);
+      if (filters?.ano) params.append('ano', filters.ano);
+      if (filters?.score) params.append('score', filters.score);
+      if (filters?.classificacao) params.append('classificacao', filters.classificacao);
+      
+      const queryString = params.toString();
+      const url = queryString 
+        ? `${API_BASE_URL}/api/animefire/${endpoint}?${queryString}`
         : `${API_BASE_URL}/api/animefire/${endpoint}`;
       
       const response = await axios.get(url);
@@ -44,24 +59,24 @@ class AnimeFireClient {
     }
   }
 
-  async emLancamento(page: number = 1): Promise<AnimeFireResponse> {
-    return await this.fetchFromServer('em-lancamento', page);
+  async emLancamento(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
+    return await this.fetchFromServer('em-lancamento', page, filters);
   }
 
-  async animesAtualizados(page: number = 1): Promise<AnimeFireResponse> {
-    return await this.fetchFromServer('animes-atualizados', page);
+  async animesAtualizados(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
+    return await this.fetchFromServer('animes-atualizados', page, filters);
   }
 
-  async topAnimes(page: number = 1): Promise<AnimeFireResponse> {
-    return await this.fetchFromServer('top-animes', page);
+  async topAnimes(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
+    return await this.fetchFromServer('top-animes', page, filters);
   }
 
-  async listaDeAnimesLegendados(page: number = 1): Promise<AnimeFireResponse> {
-    return await this.fetchFromServer('lista-de-animes-legendados', page);
+  async listaDeAnimesLegendados(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
+    return await this.fetchFromServer('lista-de-animes-legendados', page, filters);
   }
 
-  async listaDeAnimesDublados(page: number = 1): Promise<AnimeFireResponse> {
-    return await this.fetchFromServer('lista-de-animes-dublados', page);
+  async listaDeAnimesDublados(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
+    return await this.fetchFromServer('lista-de-animes-dublados', page, filters);
   }
 
   async pesquisar(busca: string, page: number = 1): Promise<AnimeFireResponse> {
