@@ -565,17 +565,30 @@ const extractVideoData = async () => {
                   method: 'webview-iframe'
                 });
               } else {
-                console.log('🎬 URL de vídeo direta encontrada, usando VideoView');
-                
-                // Usar URL direta - o WebVideoPlayer vai construir o proxy URL se necessário
-                setVideoData({
-                  videoUrl: extractedVideo,
-                  iframeSrc: iframeSrc,
-                  allQualities: data.allQualities || [],
-                  episodeUrl: episodeUrl,  // Importante: passar episodeUrl para construir proxy URL
-                  method: 'iframe-extracted',
-                  originalVideoUrl: extractedVideo
-                });
+                // MOBILE: Forçar uso de iframe mesmo quando vídeo é extraído
+                if (Platform.OS !== 'web') {
+                  console.log('📱 MOBILE detectado - Forçando iframe mesmo com vídeo extraído');
+                  setUseWebView(true);
+                  setVideoData({
+                    videoUrl: null,
+                    iframeSrc: iframeSrc,
+                    allQualities: data.allQualities || [],
+                    episodeUrl: data.episodeUrl || episodeUrl,
+                    method: 'webview-iframe-mobile-forced'
+                  });
+                } else {
+                  console.log('🎬 URL de vídeo direta encontrada, usando VideoView');
+                  
+                  // Usar URL direta - o WebVideoPlayer vai construir o proxy URL se necessário
+                  setVideoData({
+                    videoUrl: extractedVideo,
+                    iframeSrc: iframeSrc,
+                    allQualities: data.allQualities || [],
+                    episodeUrl: episodeUrl,
+                    method: 'iframe-extracted',
+                    originalVideoUrl: extractedVideo
+                  });
+                }
               }
             } else {
               console.log('📱 Usando WebView para reproduzir iframe');
