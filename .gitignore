@@ -34,6 +34,21 @@ yarn-error.*
 .env*.local
 .env
 
+# local debug / generated artifacts
+debug-*.js
+inspect-*.js
+probe-*.js
+anime-detail.js
+episode-detail.js
+decode-externals.js
+run-externals-script.js
+body.txt
+response.txt
+segment*.txt
+variant*.txt
+segment.bin
+nmp
+
 # Cache data
 data/
 

@@ -1,7 +1,7 @@
 import { ScrollView, Text, View, TouchableOpacity, ActivityIndicator, Image, FlatList, Dimensions } from "react-native";
 import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { animeFireClient } from "@/lib/api/animeFire/anime-fire-client";
 import { Platform } from "react-native";
 
@@ -78,6 +78,7 @@ function AnimeList({ animes, renderAnimeCard }: { animes: AnimeDisplay[], render
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const searchParams = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [animes, setAnimes] = useState<AnimeDisplay[]>([]);
@@ -85,6 +86,8 @@ export default function ExploreScreen() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalAnimes, setTotalAnimes] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     letra: '',
     ano: '',
@@ -93,8 +96,36 @@ export default function ExploreScreen() {
   });
 
   useEffect(() => {
-    loadAnimes(1);
-  }, []);
+    // Check if there's a search query in the URL
+    const search = searchParams.search as string;
+    if (search) {
+      setSearchQuery(search);
+      setIsSearchMode(true);
+      loadSearchResults(1, search);
+    } else {
+      setIsSearchMode(false);
+      loadAnimes(1);
+    }
+  }, [searchParams.search]);
+
+  const loadSearchResults = async (pageNum: number, query: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await animeFireClient.pesquisar(query, pageNum);
+      const formatted = response.results;
+      setAnimes(formatted);
+      setCurrentPage(pageNum);
+      setTotalPages(response.pagination?.totalPages || 1);
+      setTotalAnimes(response.total || 0);
+    } catch (err) {
+      console.error("Error loading search results:", err);
+      setError("Erro ao carregar resultados da busca");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadAnimes = async (pageNum: number, category?: string, activeFilters?: FilterState) => {
     try {
@@ -145,9 +176,9 @@ export default function ExploreScreen() {
   };
 
   const handleAnimePress = (animeLink: string) => {
-    const slugMatch = animeLink.match(/\/animes\/([^\/]+)/);
-    const slug = slugMatch ? slugMatch[1] : animeLink;
-    router.push(`/episodes-list?slug=${slug}`);
+    const slugMatch = animeLink.match(/\/(?:anime|animes)\/([^/?#]+)/i);
+    const slug = slugMatch ? slugMatch[1] : String(animeLink).split('/').filter(Boolean).pop() || animeLink;
+    router.push(`/episodes-list?slug=${encodeURIComponent(slug)}`);
   };
 
   const handleCategoryChange = (category: string) => {
@@ -178,7 +209,11 @@ export default function ExploreScreen() {
 
   const handlePageChange = (pageNum: number) => {
     if (pageNum >= 1 && pageNum <= totalPages && pageNum !== currentPage) {
-      loadAnimes(pageNum);
+      if (isSearchMode) {
+        loadSearchResults(pageNum, searchQuery);
+      } else {
+        loadAnimes(pageNum);
+      }
     }
   };
 
@@ -257,122 +292,131 @@ export default function ExploreScreen() {
     <ScreenContainer className="p-0">
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="px-4 py-4 bg-gradient-to-r from-primary to-pink-500">
-          <Text className="text-3xl font-bold text-white">Explorar</Text>
-          <Text className="text-sm text-white/80 mt-1">Explore todos os animes disponíveis na API</Text>
+          <Text className="text-3xl font-bold text-white">
+            {isSearchMode ? "Resultados da Busca" : "Explorar"}
+          </Text>
+          <Text className="text-sm text-white/80 mt-1">
+            {isSearchMode 
+              ? `Resultados para: "${searchQuery}"` 
+              : "Explore todos os animes disponíveis na API"
+            }
+          </Text>
         </View>
 
-        <View className="px-4 py-4 bg-surface border-b border-border">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="flex-row gap-2"
-          >
-            {[
-              { key: "em-lancamento", label: "Em Lancamento" },
-              { key: "animes-atualizados", label: "Animes Atualizados" },
-              { key: "top-animes", label: "Top Animes" },
-              { key: "legendados", label: "Legendados" },
-              { key: "dublados", label: "Dublados" }
-            ].map((category) => (
-              <TouchableOpacity
-                key={category.key}
-                onPress={() => handleCategoryChange(category.key)}
-                className={`px-4 py-2 rounded-lg ${
-                  selectedCategory === category.key
-                    ? "bg-primary"
-                    : "bg-muted border border-border"
-                }`}
-              >
-                <Text
-                  className={`text-sm font-semibold ${
-                    selectedCategory === category.key ? "text-white" : "text-foreground"
+        {!isSearchMode && (
+          <View className="px-4 py-4 bg-surface border-b border-border">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="flex-row gap-2"
+            >
+              {[
+                { key: "em-lancamento", label: "Em Lancamento" },
+                { key: "animes-atualizados", label: "Animes Atualizados" },
+                { key: "top-animes", label: "Top Animes" },
+                { key: "legendados", label: "Legendados" },
+                { key: "dublados", label: "Dublados" }
+              ].map((category) => (
+                <TouchableOpacity
+                  key={category.key}
+                  onPress={() => handleCategoryChange(category.key)}
+                  className={`px-4 py-2 rounded-lg ${
+                    selectedCategory === category.key
+                      ? "bg-primary"
+                      : "bg-muted border border-border"
                   }`}
                 >
-                  {category.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Filtros */}
-          <View className="mt-4 pt-4 border-t border-border">
-            <View className="flex-row flex-wrap gap-2">
-              {/* Letra */}
-              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 80 }}>
-                <select
-                  value={filters.letra}
-                  onChange={(e) => handleFilterChange('letra', e.target.value)}
-                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
-                  style={{ border: 'none', background: 'transparent' }}
-                >
-                  <option value="">Letra</option>
-                  {LETRAS.slice(1).map(l => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-              </View>
-
-              {/* Ano */}
-              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 90 }}>
-                <select
-                  value={filters.ano}
-                  onChange={(e) => handleFilterChange('ano', e.target.value)}
-                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
-                  style={{ border: 'none', background: 'transparent' }}
-                >
-                  <option value="">Ano</option>
-                  {ANOS.slice(1).map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </View>
-
-              {/* Score */}
-              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 85 }}>
-                <select
-                  value={filters.score}
-                  onChange={(e) => handleFilterChange('score', e.target.value)}
-                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
-                  style={{ border: 'none', background: 'transparent' }}
-                >
-                  <option value="">Score</option>
-                  {SCORES.slice(1).map(s => (
-                    <option key={s} value={s}>{s}+</option>
-                  ))}
-                </select>
-              </View>
-
-              {/* Classificação */}
-              <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 130 }}>
-                <select
-                  value={filters.classificacao}
-                  onChange={(e) => handleFilterChange('classificacao', e.target.value)}
-                  className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
-                  style={{ border: 'none', background: 'transparent' }}
-                >
-                  {CLASSIFICACOES.map(c => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
-              </View>
-
-              {/* Limpar Filtros */}
-              {(filters.letra || filters.ano || filters.score || filters.classificacao) && (
-                <TouchableOpacity
-                  onPress={clearFilters}
-                  className="bg-primary px-3 py-2 rounded-lg"
-                >
-                  <Text className="text-white text-sm font-semibold">Limpar</Text>
+                  <Text
+                    className={`text-sm font-semibold ${
+                      selectedCategory === category.key ? "text-white" : "text-foreground"
+                    }`}
+                  >
+                    {category.label}
+                  </Text>
                 </TouchableOpacity>
-              )}
+              ))}
+            </ScrollView>
+
+            {/* Filtros */}
+            <View className="mt-4 pt-4 border-t border-border">
+              <View className="flex-row flex-wrap gap-2">
+                {/* Letra */}
+                <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 80 }}>
+                  <select
+                    value={filters.letra}
+                    onChange={(e) => handleFilterChange('letra', e.target.value)}
+                    className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                    style={{ border: 'none', background: 'transparent' }}
+                  >
+                    <option value="">Letra</option>
+                    {LETRAS.slice(1).map(l => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </View>
+
+                {/* Ano */}
+                <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 90 }}>
+                  <select
+                    value={filters.ano}
+                    onChange={(e) => handleFilterChange('ano', e.target.value)}
+                    className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                    style={{ border: 'none', background: 'transparent' }}
+                  >
+                    <option value="">Ano</option>
+                    {ANOS.slice(1).map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </View>
+
+                {/* Score */}
+                <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 85 }}>
+                  <select
+                    value={filters.score}
+                    onChange={(e) => handleFilterChange('score', e.target.value)}
+                    className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                    style={{ border: 'none', background: 'transparent' }}
+                  >
+                    <option value="">Score</option>
+                    {SCORES.slice(1).map(s => (
+                      <option key={s} value={s}>{s}+</option>
+                    ))}
+                  </select>
+                </View>
+
+                {/* Classificação */}
+                <View className="bg-muted border border-border rounded-lg overflow-hidden" style={{ minWidth: 130 }}>
+                  <select
+                    value={filters.classificacao}
+                    onChange={(e) => handleFilterChange('classificacao', e.target.value)}
+                    className="bg-transparent text-foreground px-3 py-2 text-sm outline-none"
+                    style={{ border: 'none', background: 'transparent' }}
+                  >
+                    {CLASSIFICACOES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </View>
+
+                {/* Limpar Filtros */}
+                {(filters.letra || filters.ano || filters.score || filters.classificacao) && (
+                  <TouchableOpacity
+                    onPress={clearFilters}
+                    className="bg-primary px-3 py-2 rounded-lg"
+                  >
+                    <Text className="text-white text-sm font-semibold">Limpar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         <View className="mt-4 px-4">
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-lg font-bold text-foreground">
-              {getCategoryLabel(selectedCategory)}
+              {isSearchMode ? "Resultados da Busca" : getCategoryLabel(selectedCategory)}
             </Text>
             <Text className="text-sm text-muted">
               Total: {totalAnimes} animes
@@ -388,8 +432,9 @@ export default function ExploreScreen() {
             <View className="py-12 items-center">
               <ActivityIndicator size="large" color="#7C3AED" />
               <Text className="text-foreground mt-4 text-center">
-                Procurando animes em{'\n'}
-                <Text className="font-bold text-primary">{getCategoryLabel(selectedCategory)}</Text>...
+                {isSearchMode
+                  ? `Buscando por "${searchQuery}"...`
+                  : `Procurando animes em ${getCategoryLabel(selectedCategory)}...`}
               </Text>
             </View>
           ) : animes.length > 0 ? (

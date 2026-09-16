@@ -180,6 +180,53 @@ async function startServer() {
     });
 
     // Proxy para v?deos com cookies, headers e Range Requests (suporte a seek)
+    const rewriteHlsPlaylist = (playlistText: string, playlistUrl: string, episodeUrl: string, req: any) => {
+        const proxyBase = `${req.protocol}://${req.get('host')}/proxy-video`;
+
+        return playlistText
+            .split(/\r?\n/)
+            .map((line) => {
+                if (!line) {
+                    return line;
+                }
+
+                const urlMatch = line.match(/(?:URI|VALUE)=(?:"([^"]+)"|'([^']+)'|([^\s,]+))/i);
+                if (urlMatch) {
+                    const rawUrl = urlMatch[1] || urlMatch[2] || urlMatch[3];
+                    if (rawUrl) {
+                        try {
+                            const absoluteLine = new URL(rawUrl, playlistUrl).toString();
+                            return line.replace(rawUrl, `${proxyBase}?videoUrl=${encodeURIComponent(absoluteLine)}&episodeUrl=${encodeURIComponent(episodeUrl)}`);
+                        } catch {
+                            return line;
+                        }
+                    }
+                }
+
+                if (line.startsWith('#')) {
+                    return line;
+                }
+
+                try {
+                    const absoluteLine = new URL(line, playlistUrl).toString();
+                    return `${proxyBase}?videoUrl=${encodeURIComponent(absoluteLine)}&episodeUrl=${encodeURIComponent(episodeUrl)}`;
+                } catch {
+                    return line;
+                }
+            })
+            .join('\n');
+    };
+
+    const isMp4Fragment = (buffer: Buffer) => {
+        if (!buffer || buffer.length < 8) {
+            return false;
+        }
+
+        const signatures = ['moov', 'moof', 'ftyp', 'mdat'];
+        const tag = buffer.subarray(4, 8).toString('ascii', 0, 4);
+        return signatures.includes(tag) || signatures.includes(buffer.subarray(0, 4).toString('ascii'));
+    };
+
     app.get('/proxy-video', async (req, res) => {
         try {
             const {videoUrl, episodeUrl} = req.query;
@@ -188,7 +235,6 @@ async function startServer() {
             }
             console.log('? Proxy para v?deo:', videoUrl);
 
-            // Pegar Range header do cliente (para seek/scrub)
             const range = req.headers.range;
             if (range) {
                 console.log('? Range request:', range);
@@ -212,14 +258,12 @@ async function startServer() {
                 }
             }
 
-            // Headers para o request do v?deo
             const videoHeaders: any = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Referer': episodeUrl || 'https://animefire.io/',
                 'Cookie': cookies
             };
 
-            // Forward Range header se existir
             if (range) {
                 videoHeaders['Range'] = range;
             }
@@ -229,25 +273,72 @@ async function startServer() {
                 responseType: 'stream'
             });
 
-            // Headers de resposta
-            res.setHeader('Content-Type', videoResponse.headers['content-type'] || 'video/mp4');
+            const contentType = String(videoResponse.headers['content-type'] || 'video/mp4');
+            const isHlsPlaylist = contentType.toLowerCase().includes('mpegurl') || String(videoUrl).toLowerCase().includes('.m3u8') || String(videoUrl).toLowerCase().includes('h.jpg');
+            const shouldInspectBody = isHlsPlaylist || contentType.toLowerCase().includes('image/jpeg') || contentType.toLowerCase().includes('image/png');
+
+            let finalContentType = contentType;
+            if (isHlsPlaylist) {
+                finalContentType = 'application/vnd.apple.mpegurl';
+            }
+
+            let payload: Buffer | null = null;
+            if (shouldInspectBody) {
+                const chunks: Buffer[] = [];
+                for await (const chunk of videoResponse.data) {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                }
+                payload = Buffer.concat(chunks);
+
+                if (!isHlsPlaylist && payload.length > 8 && (contentType.toLowerCase().includes('image/jpeg') || contentType.toLowerCase().includes('image/png'))) {
+                    if (isMp4Fragment(payload)) {
+                        finalContentType = 'video/mp4';
+                    }
+                }
+            }
+
+            res.setHeader('Content-Type', finalContentType);
             res.setHeader('Content-Disposition', 'inline; filename="video.mp4"');
             res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Headers', 'Range');
 
-            // Forward Content-Range se for resposta parcial (206)
+            if (isHlsPlaylist) {
+                const playlistText = (payload || Buffer.from('')).toString('utf8');
+                const rewrittenText = rewriteHlsPlaylist(playlistText, String(videoUrl), String(episodeUrl || ''), req);
+                return res.send(rewrittenText);
+            }
+
+            if (payload) {
+                if (videoResponse.headers['content-range']) {
+                    res.setHeader('Content-Range', videoResponse.headers['content-range']);
+                    if (videoResponse.headers['content-length']) {
+                        res.setHeader('Content-Length', String(videoResponse.headers['content-length']));
+                    }
+                    res.status(206);
+                    console.log('?  Streaming parcial (206):', videoResponse.headers['content-range']);
+                } else {
+                    if (videoResponse.headers['content-length']) {
+                        res.setHeader('Content-Length', String(videoResponse.headers['content-length']));
+                    }
+                    res.status(200);
+                }
+                return res.end(payload);
+            }
+
             if (videoResponse.headers['content-range']) {
                 res.setHeader('Content-Range', videoResponse.headers['content-range']);
-                res.setHeader('Content-Length', videoResponse.headers['content-length'] || '');
+                if (videoResponse.headers['content-length']) {
+                    res.setHeader('Content-Length', String(videoResponse.headers['content-length']));
+                }
                 res.status(206);
                 console.log('?  Streaming parcial (206):', videoResponse.headers['content-range']);
             } else {
-                res.setHeader('Content-Length', videoResponse.headers['content-length'] || '');
+                if (videoResponse.headers['content-length']) {
+                    res.setHeader('Content-Length', String(videoResponse.headers['content-length']));
+                }
                 res.status(200);
             }
-
-            // Headers CORS para permitir acesso
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Access-Control-Allow-Headers', 'Range');
 
             videoResponse.data.pipe(res);
 

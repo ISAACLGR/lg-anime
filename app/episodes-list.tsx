@@ -5,7 +5,48 @@ import axios from 'axios';
 
 // Detectar se está no servidor ou cliente
 const isServer = typeof window === 'undefined';
-const API_BASE_URL = isServer ? 'http://localhost:3000' : (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.18.190:3000');
+const DEFAULT_API_BASE_URL = 'http://localhost:3001';
+const getApiCandidates = () => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  const candidates = [
+    envUrl,
+    DEFAULT_API_BASE_URL,
+    'http://localhost:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3000',
+  ];
+
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location;
+    candidates.unshift(
+      `${protocol}//${hostname}:3001`,
+      `${protocol}//${hostname}:3000`,
+      `${protocol}//127.0.0.1:3001`,
+      `${protocol}//127.0.0.1:3000`
+    );
+  }
+
+  return Array.from(new Set(candidates.filter(Boolean) as string[]));
+};
+
+const resolveApiBaseUrl = async () => {
+  const candidates = getApiCandidates();
+
+  for (const baseUrl of candidates) {
+    try {
+      const response = await fetch(`${baseUrl}/api/health`, { method: 'GET', cache: 'no-store' });
+      if (response.ok) {
+        return baseUrl;
+      }
+    } catch {
+      // continue to next candidate
+    }
+  }
+
+  return candidates[0] || DEFAULT_API_BASE_URL;
+};
+
+const API_BASE_URL = isServer ? DEFAULT_API_BASE_URL : (process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_BASE_URL);
 
 interface Episode {
   href: string;
@@ -32,23 +73,48 @@ export default function EpisodesListScreen() {
   const { slug } = useLocalSearchParams();
   const router = useRouter();
   const [animeData, setAnimeData] = useState<AnimeData | null>(null);
+
+  const normalizeSlug = (rawSlug: string | string[] | undefined) => {
+    const value = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
+    if (!value) return '';
+
+    const decoded = decodeURIComponent(String(value));
+    const match = decoded.match(/\/(?:anime|animes)\/([^/?#]+)/i);
+    if (match) return match[1];
+
+    try {
+      const url = new URL(decoded);
+      const urlMatch = url.pathname.match(/\/(?:anime|animes)\/([^/?#]+)/i);
+      if (urlMatch) return urlMatch[1];
+    } catch {
+      // Ignora URL inválida; usa valor bruto abaixo.
+    }
+
+    return decoded.replace(/^https?:\/\/[^/]+\//i, '').replace(/\/+$/, '');
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (slug) {
-      fetchEpisodes();
+    const normalizedSlug = normalizeSlug(slug);
+    if (normalizedSlug) {
+      fetchEpisodes(normalizedSlug);
+    } else {
+      setError('Slug do anime inválido');
+      setLoading(false);
     }
   }, [slug]);
 
-  const fetchEpisodes = async () => {
+  const fetchEpisodes = async (normalizedSlug?: string) => {
     try {
       setLoading(true);
       setError(null);
-      
-      const animeLink = `https://animefire.io/animes/${slug}`;
-      const response = await axios.get(`${API_BASE_URL}/api/animefire/getEpisodio?link=${encodeURIComponent(animeLink)}`);
-      
+
+      const finalSlug = normalizedSlug || normalizeSlug(slug);
+      const animeLink = `https://animefire.one/anime/${finalSlug}`;
+      const effectiveApiBaseUrl = await resolveApiBaseUrl();
+      const response = await axios.get(`${effectiveApiBaseUrl}/api/animefire/getEpisodio?link=${encodeURIComponent(animeLink)}`);
+
       setAnimeData(response.data);
     } catch (err) {
       console.error('Erro ao buscar episódios:', err);
@@ -58,13 +124,19 @@ export default function EpisodesListScreen() {
     }
   };
 
+  const buildEpisodeUrl = (animeSlug: string | string[] | undefined, episodeNumber: number) => {
+    const finalSlug = normalizeSlug(animeSlug);
+    if (!finalSlug) return '#';
+    return `https://animefire.one/anime/${finalSlug}/episode-${episodeNumber}`;
+  };
+
   const handlePlayEpisode = (episodeUrl: string, episodeNumber: number) => {
-    // Extrair número do episódio da URL
-    const episodeMatch = episodeUrl.match(/\/(\d+)$/);
+    const resolvedUrl = (!episodeUrl || episodeUrl === '#') ? buildEpisodeUrl(slug, episodeNumber) : episodeUrl;
+    const episodeMatch = resolvedUrl.match(/(?:\/|-)episode[-_]?([0-9]+)(?:\/|$)/i) || resolvedUrl.match(/\/(\d+)$/);
     const episodeNum = episodeMatch ? episodeMatch[1] : episodeNumber;
-    
-    // Navegar para o player com a URL do episódio
-    router.push(`/player/${slug}?episode=${episodeNum}&url=${encodeURIComponent(episodeUrl)}`);
+    const finalSlug = normalizeSlug(slug);
+
+    router.push(`/player/${encodeURIComponent(finalSlug)}?episode=${episodeNum}&url=${encodeURIComponent(resolvedUrl)}`);
   };
 
   if (loading) {
@@ -165,7 +237,7 @@ export default function EpisodesListScreen() {
           <TouchableOpacity 
             key={index}
             style={styles.episodeItem}
-            onPress={() => handlePlayEpisode(episode.href, index + 1)}
+            onPress={() => handlePlayEpisode(episode.href || '#', index + 1)}
           >
             <View style={styles.episodeNumberContainer}>
               <Text style={styles.episodeNumber}>{index + 1}</Text>

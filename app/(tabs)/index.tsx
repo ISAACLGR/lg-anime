@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, TouchableOpacity, FlatList, Image, ActivityIndicator } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, FlatList, Image, ActivityIndicator, TextInput } from "react-native";
 import { useEffect, useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useRouter } from "expo-router";
@@ -19,6 +19,7 @@ export default function HomeScreen() {
   const [featured, setFeatured] = useState<AnimeDisplay | null>(null);
   const [airing, setAiring] = useState<AnimeDisplay[]>([]);
   const [popular, setPopular] = useState<AnimeDisplay[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadData();
@@ -53,9 +54,15 @@ export default function HomeScreen() {
 
   const handleAnimePress = (animeLink: string) => {
     // Extrair slug do link para navegar
-    const slugMatch = animeLink.match(/\/animes\/([^\/]+)/);
-    const slug = slugMatch ? slugMatch[1] : animeLink;
-    router.push(`/episodes-list?slug=${slug}`);
+    const slugMatch = animeLink.match(/\/(?:anime|animes)\/([^/?#]+)/i);
+    const slug = slugMatch ? slugMatch[1] : String(animeLink).split('/').filter(Boolean).pop() || animeLink;
+    router.push(`/episodes-list?slug=${encodeURIComponent(slug)}`);
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/explore?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
   };
 
   const AnimeCard = ({ anime }: { anime: AnimeDisplay }) => (
@@ -112,6 +119,22 @@ export default function HomeScreen() {
         <View className="px-4 py-4 bg-gradient-to-r from-primary to-pink-500">
           <Text className="text-3xl font-bold text-white">AnimeFire</Text>
           <Text className="text-sm text-white/80 mt-1">Assista animes sem anúncios</Text>
+          
+          {/* Search Bar */}
+          <View className="mt-4 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 flex-row items-center">
+            <TextInput
+              className="flex-1 text-white placeholder-white/70 text-sm"
+              placeholder="Buscar animes..."
+              placeholderTextColor="rgba(255, 255, 255, 0.7)"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+            />
+            <TouchableOpacity onPress={handleSearch} className="ml-2">
+              <Text className="text-white font-semibold text-sm">🔍</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Featured Banner */}

@@ -9,13 +9,14 @@ const envPath = path.join(__dirname, '.env');
 if (!fs.existsSync(envPath)) {
     console.log('Criando arquivo .env...');
     const envContent = `# OAuth Configuration
-OAUTH_SERVER_URL=http://localhost:3000
+OAUTH_SERVER_URL=http://localhost:3001
 
 # Database
 DATABASE_URL=mysql://user:password@localhost:3306/animefire
 
 # Expo
 EXPO_PORT=8082
+EXPO_PUBLIC_API_URL=http://localhost:3001
 `;
     fs.writeFileSync(envPath, envContent);
     console.log('Arquivo .env criado!');
@@ -26,7 +27,7 @@ const expoPort = '8082';
 
 console.log('Iniciando AnimeFire API Cliente...');
 console.log('');
-console.log(`Backend: http://localhost:3000`);
+console.log(`Backend: http://localhost:3001`);
 console.log(`Frontend: http://localhost:${expoPort}`);
 console.log('');
 console.log('Pressione Ctrl+C para parar todos os serviços');
