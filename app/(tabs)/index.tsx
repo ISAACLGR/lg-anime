@@ -1,5 +1,5 @@
 import { ScrollView, Text, View, TouchableOpacity, FlatList, Image, ActivityIndicator, TextInput } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useRouter } from "expo-router";
 import { animeFireClient } from "@/lib/api/animeFire/anime-fire-client";
@@ -13,6 +13,7 @@ interface AnimeDisplay {
 }
 
 const FALLBACK_ANIME_IMAGE = 'https://placehold.co/600x900/1f2937/ffffff?text=Anime';
+const inFlightHomeLoads = new Set<string>();
 
 const normalizeAnimeImage = (image?: string) => {
   if (!image || typeof image !== 'string') return FALLBACK_ANIME_IMAGE;
@@ -27,6 +28,7 @@ const normalizeAnimeImage = (image?: string) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const mountedRef = useRef(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [featured, setFeatured] = useState<AnimeDisplay | null>(null);
@@ -35,10 +37,23 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    mountedRef.current = true;
     loadData();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const loadData = async () => {
+    const key = 'home-load';
+    if (inFlightHomeLoads.has(key)) {
+      console.log('[home] Requisição de home já em andamento, ignorando duplicata');
+      return;
+    }
+
+    inFlightHomeLoads.add(key);
+
     try {
       setLoading(true);
       setError(null);
@@ -46,22 +61,23 @@ export default function HomeScreen() {
       // Fetch airing animes from AnimeFire
       const airingResponse = await animeFireClient.emLancamento(1);
       const airingFormatted = airingResponse.results.slice(0, 5);
-      setAiring(airingFormatted);
+      if (mountedRef.current) setAiring(airingFormatted);
 
       // Set featured as first airing anime
-      if (airingFormatted.length > 0) {
+      if (airingFormatted.length > 0 && mountedRef.current) {
         setFeatured(airingFormatted[0]);
       }
 
       // Fetch popular animes from AnimeFire
       const popularResponse = await animeFireClient.topAnimes(1);
       const popularFormatted = popularResponse.results.slice(0, 5);
-      setPopular(popularFormatted);
+      if (mountedRef.current) setPopular(popularFormatted);
     } catch (err) {
       console.error("Error loading home data:", err);
-      setError("Erro ao carregar animes");
+      if (mountedRef.current) setError("Erro ao carregar animes");
     } finally {
-      setLoading(false);
+      inFlightHomeLoads.delete(key);
+      if (mountedRef.current) setLoading(false);
     }
   };
 

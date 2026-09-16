@@ -104,19 +104,28 @@ export default function EpisodesListScreen() {
 
   const fetchEpisodes = async (normalizedSlug?: string) => {
     try {
+      const startedAt = Date.now();
+      console.log('[episodes-list] Iniciando carregamento do anime:', { slug, normalizedSlug, startedAt });
       setLoading(true);
       setError(null);
 
       const finalSlug = normalizedSlug || normalizeSlug(slug);
       const animeLink = `https://animefire.one/anime/${finalSlug}`;
+      console.log('[episodes-list] URL do AnimeFire:', animeLink);
+
       const effectiveApiBaseUrl = await resolveApiBaseUrl();
+      console.log('[episodes-list] API base resolvida:', effectiveApiBaseUrl);
+
       const response = await axios.get(`${effectiveApiBaseUrl}/api/animefire/getEpisodio?link=${encodeURIComponent(animeLink)}`);
+      console.log('[episodes-list] Resposta recebida em ms:', Date.now() - startedAt, response?.data ? Object.keys(response.data) : 'sem-data');
 
       setAnimeData(response.data);
     } catch (err) {
-      console.error('Erro ao buscar episódios:', err);
+      console.error('[episodes-list] Erro ao buscar episódios:', err);
       setError('Erro ao carregar episódios');
     } finally {
+      const finishedAt = Date.now();
+      console.log('[episodes-list] Finalizado carregamento em ms:', finishedAt);
       setLoading(false);
     }
   };
@@ -149,7 +158,7 @@ export default function EpisodesListScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchEpisodes}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => fetchEpisodes()}>
           <Text style={styles.retryButtonText}>Tentar Novamente</Text>
         </TouchableOpacity>
       </View>
