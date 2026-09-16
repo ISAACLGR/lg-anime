@@ -10,23 +10,20 @@ import { WebView } from "react-native-webview";
 
 // Detectar se está no servidor ou cliente
 const isServer = typeof window === 'undefined';
-const DEFAULT_API_BASE_URL = 'http://localhost:3001';
+const DEFAULT_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const getApiCandidates = () => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   const candidates = [
     envUrl,
     DEFAULT_API_BASE_URL,
     'http://localhost:3000',
-    'http://127.0.0.1:3001',
     'http://127.0.0.1:3000',
   ];
 
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
     candidates.unshift(
-      `${protocol}//${hostname}:3001`,
       `${protocol}//${hostname}:3000`,
-      `${protocol}//127.0.0.1:3001`,
       `${protocol}//127.0.0.1:3000`
     );
   }

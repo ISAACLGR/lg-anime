@@ -13,6 +13,19 @@ interface AnimeDisplay {
   link: string;
 }
 
+const FALLBACK_ANIME_IMAGE = 'https://placehold.co/600x900/1f2937/ffffff?text=Anime';
+
+const normalizeAnimeImage = (image?: string) => {
+  if (!image || typeof image !== 'string') return FALLBACK_ANIME_IMAGE;
+
+  const trimmed = image.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return FALLBACK_ANIME_IMAGE;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
+
+  return trimmed.startsWith('/') ? `https://animefire.one${trimmed}` : trimmed;
+};
+
 interface FilterState {
   letra: string;
   ano: string;
@@ -247,7 +260,7 @@ export default function ExploreScreen() {
       style={{ width: 150 }}
     >
       <Image
-        source={{ uri: item.image }}
+        source={{ uri: normalizeAnimeImage(item.image) }}
         className="w-full h-32 bg-muted"
         resizeMode="cover"
       />

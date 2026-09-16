@@ -2,7 +2,42 @@ import axios from 'axios';
 
 // Detectar se está rodando no servidor (backend) ou no cliente (browser/app)
 const isServer = typeof window === 'undefined';
-const API_BASE_URL = isServer ? 'http://localhost:3000' : (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000');
+const DEFAULT_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const DEFAULT_API_BASE_URLS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+const getApiCandidates = () => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  const candidates = [envUrl, DEFAULT_API_BASE_URL, ...DEFAULT_API_BASE_URLS];
+
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location;
+    candidates.unshift(
+      `${protocol}//${hostname}:3000`,
+      `${protocol}//127.0.0.1:3000`
+    );
+  }
+
+  return Array.from(new Set(candidates.filter(Boolean) as string[]));
+};
+
+const resolveApiBaseUrl = async () => {
+  const candidates = getApiCandidates();
+
+  for (const baseUrl of candidates) {
+    try {
+      const response = await axios.get(`${baseUrl}/api/health`, { timeout: 2000 });
+      if (response.status >= 200 && response.status < 300) {
+        return baseUrl;
+      }
+    } catch {
+      // Tenta a próxima URL disponível.
+    }
+  }
+
+  return candidates[0] || 'http://localhost:3000';
+};
+
+const API_BASE_URL = isServer ? DEFAULT_API_BASE_URL : (process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_BASE_URL);
 
 interface AnimeDisplay {
   title: string;
@@ -32,31 +67,38 @@ interface FilterParams {
 
 class AnimeFireClient {
   private async fetchFromServer(endpoint: string, page?: number, filters?: FilterParams): Promise<AnimeFireResponse> {
-    try {
-      const params = new URLSearchParams();
-      if (page) params.append('page', page.toString());
-      if (filters?.letra) params.append('letra', filters.letra);
-      if (filters?.ano) params.append('ano', filters.ano);
-      if (filters?.score) params.append('score', filters.score);
-      if (filters?.classificacao) params.append('classificacao', filters.classificacao);
-      
-      const queryString = params.toString();
-      const url = queryString 
-        ? `${API_BASE_URL}/api/animefire/${endpoint}?${queryString}`
-        : `${API_BASE_URL}/api/animefire/${endpoint}`;
-      
-      const response = await axios.get(url);
-      return response.data;
-    } catch (error) {
-      console.error(`[AnimeFireClient] Error fetching ${endpoint}:`, error);
-      return {
-        success: false,
-        url: '',
-        results: [],
-        total: 0,
-        pagination: { currentPage: 1, totalPages: 1 }
-      };
+    const params = new URLSearchParams();
+    if (page) params.append('page', page.toString());
+    if (filters?.letra) params.append('letra', filters.letra);
+    if (filters?.ano) params.append('ano', filters.ano);
+    if (filters?.score) params.append('score', filters.score);
+    if (filters?.classificacao) params.append('classificacao', filters.classificacao);
+
+    const queryString = params.toString();
+    const candidates = getApiCandidates();
+    let lastError: unknown;
+
+    for (const baseUrl of candidates) {
+      try {
+        const url = queryString
+          ? `${baseUrl}/api/animefire/${endpoint}?${queryString}`
+          : `${baseUrl}/api/animefire/${endpoint}`;
+
+        const response = await axios.get(url, { timeout: 15000 });
+        return response.data;
+      } catch (error) {
+        lastError = error;
+      }
     }
+
+    console.error(`[AnimeFireClient] Error fetching ${endpoint}:`, lastError);
+    return {
+      success: false,
+      url: '',
+      results: [],
+      total: 0,
+      pagination: { currentPage: 1, totalPages: 1 }
+    };
   }
 
   async emLancamento(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
@@ -80,27 +122,46 @@ class AnimeFireClient {
   }
 
   async pesquisar(busca: string, page: number = 1): Promise<AnimeFireResponse> {
-    try {
-      const url = `${API_BASE_URL}/api/animefire/pesquisar?q=${encodeURIComponent(busca)}&page=${page}`;
-      const response = await axios.get(url);
-      return response.data;
-    } catch (error) {
-      console.error(`[AnimeFireClient] Error fetching pesquisar:`, error);
-      return {
-        success: false,
-        url: '',
-        results: [],
-        total: 0,
-        pagination: { currentPage: 1, totalPages: 1 }
-      };
+    const candidates = getApiCandidates();
+    let lastError: unknown;
+
+    for (const baseUrl of candidates) {
+      try {
+        const url = `${baseUrl}/api/animefire/pesquisar?q=${encodeURIComponent(busca)}&page=${page}`;
+        const response = await axios.get(url, { timeout: 15000 });
+        return response.data;
+      } catch (error) {
+        lastError = error;
+      }
     }
+
+    console.error(`[AnimeFireClient] Error fetching pesquisar:`, lastError);
+    return {
+      success: false,
+      url: '',
+      results: [],
+      total: 0,
+      pagination: { currentPage: 1, totalPages: 1 }
+    };
   }
 
   async getAnimeDetails(slug: string): Promise<any> {
     const animeLink = `https://animefire.io/animes/${slug}`;
-    const url = `${API_BASE_URL}/api/animefire/getEpisodio?link=${encodeURIComponent(animeLink)}`;
-    const response = await axios.get(url);
-    return response.data;
+    const candidates = getApiCandidates();
+    let lastError: unknown;
+
+    for (const baseUrl of candidates) {
+      try {
+        const url = `${baseUrl}/api/animefire/getEpisodio?link=${encodeURIComponent(animeLink)}`;
+        const response = await axios.get(url, { timeout: 15000 });
+        return response.data;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    console.error(`[AnimeFireClient] Error fetching getAnimeDetails:`, lastError);
+    throw lastError instanceof Error ? lastError : new Error('Failed to fetch anime details');
   }
 }
 

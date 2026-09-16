@@ -12,6 +12,19 @@ interface AnimeDisplay {
   link: string;
 }
 
+const FALLBACK_ANIME_IMAGE = 'https://placehold.co/600x900/1f2937/ffffff?text=Anime';
+
+const normalizeAnimeImage = (image?: string) => {
+  if (!image || typeof image !== 'string') return FALLBACK_ANIME_IMAGE;
+
+  const trimmed = image.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return FALLBACK_ANIME_IMAGE;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
+
+  return trimmed.startsWith('/') ? `https://animefire.one${trimmed}` : trimmed;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -72,7 +85,7 @@ export default function HomeScreen() {
       style={{ width: 150 }}
     >
       <Image
-        source={{ uri: anime.image }}
+        source={{ uri: normalizeAnimeImage(anime.image) }}
         className="w-full h-48 bg-muted"
         resizeMode="cover"
       />
@@ -144,7 +157,7 @@ export default function HomeScreen() {
             className="mx-4 mt-4 rounded-xl overflow-hidden bg-surface"
           >
             <Image
-              source={{ uri: featured.image }}
+              source={{ uri: normalizeAnimeImage(featured.image) }}
               className="w-full h-64 bg-muted"
               resizeMode="cover"
             />
