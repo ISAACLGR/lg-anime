@@ -1,39 +1,37 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-const HISTORY_KEY = "@animfire:watch_history";
+import {
+  clearWatchHistory,
+  initializeSqlite,
+  listWatchHistory,
+  removeWatchHistoryItem,
+  upsertWatchHistory,
+} from "@/lib/sqlite-db";
 
 export interface WatchHistoryItem {
   animeSlug: string;
   animeTitle: string;
   episode: number;
   season: number;
-  progress: number; // 0-1 (percentage)
+  progress: number;
   lastWatchedAt: number;
   totalDuration: number;
 }
 
-/**
- * Hook para gerenciar histórico de assistência
- * Persiste os dados em AsyncStorage
- */
 export function useWatchHistory() {
   const [history, setHistory] = useState<WatchHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load history from AsyncStorage on mount
   useEffect(() => {
-    loadHistory();
+    void initializeSqlite();
+    void loadHistory();
   }, []);
 
   const loadHistory = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await AsyncStorage.getItem(HISTORY_KEY);
-      if (data) {
-        setHistory(JSON.parse(data));
-      }
+      setHistory(listWatchHistory());
       setError(null);
     } catch (err) {
       console.error("Error loading watch history:", err);
@@ -50,25 +48,31 @@ export function useWatchHistory() {
           (h) =>
             h.animeSlug === item.animeSlug &&
             h.season === item.season &&
-            h.episode === item.episode
+            h.episode === item.episode,
         );
 
         let updated: WatchHistoryItem[];
         if (existingIndex >= 0) {
-          // Update existing
           updated = [...history];
           updated[existingIndex] = item;
         } else {
-          // Add new
           updated = [item, ...history];
         }
 
-        // Keep only last 100 items
         if (updated.length > 100) {
           updated = updated.slice(0, 100);
         }
 
-        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+        upsertWatchHistory({
+          animeSlug: item.animeSlug,
+          animeTitle: item.animeTitle,
+          episode: item.episode,
+          season: item.season,
+          progress: item.progress,
+          lastWatchedAt: item.lastWatchedAt || Date.now(),
+          totalDuration: item.totalDuration,
+        });
+
         setHistory(updated);
         return true;
       } catch (err) {
@@ -77,17 +81,18 @@ export function useWatchHistory() {
         return false;
       }
     },
-    [history]
+    [history],
   );
 
   const removeHistoryItem = useCallback(
     async (animeSlug: string, season: number, episode: number) => {
       try {
+        removeWatchHistoryItem(animeSlug, season, episode);
         const updated = history.filter(
           (h) =>
-            !(h.animeSlug === animeSlug && h.season === season && h.episode === episode)
+            !(h.animeSlug === animeSlug && h.season === season && h.episode === episode),
         );
-        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+
         setHistory(updated);
         return true;
       } catch (err) {
@@ -96,19 +101,17 @@ export function useWatchHistory() {
         return false;
       }
     },
-    [history]
+    [history],
   );
 
   const getAnimeHistory = useCallback(
-    (animeSlug: string) => {
-      return history.filter((h) => h.animeSlug === animeSlug);
-    },
-    [history]
+    (animeSlug: string) => history.filter((h) => h.animeSlug === animeSlug),
+    [history],
   );
 
   const clearHistory = useCallback(async () => {
     try {
-      await AsyncStorage.removeItem(HISTORY_KEY);
+      clearWatchHistory();
       setHistory([]);
       return true;
     } catch (err) {

@@ -1,13 +1,16 @@
 import axios from 'axios';
 
+import { getStoredApiBaseUrl } from '@/lib/runtime-settings';
+
 // Detectar se está rodando no servidor (backend) ou no cliente (browser/app)
 const isServer = typeof window === 'undefined';
 const DEFAULT_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const DEFAULT_API_BASE_URLS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
-const getApiCandidates = () => {
+const getApiCandidates = async () => {
+  const storedUrl = await getStoredApiBaseUrl().catch(() => '');
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  const candidates = [envUrl, DEFAULT_API_BASE_URL, ...DEFAULT_API_BASE_URLS];
+  const candidates = [storedUrl, envUrl, DEFAULT_API_BASE_URL, ...DEFAULT_API_BASE_URLS];
 
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
@@ -21,7 +24,7 @@ const getApiCandidates = () => {
 };
 
 const resolveApiBaseUrl = async () => {
-  const candidates = getApiCandidates();
+  const candidates = await getApiCandidates();
 
   for (const baseUrl of candidates) {
     try {
@@ -34,7 +37,7 @@ const resolveApiBaseUrl = async () => {
     }
   }
 
-  return candidates[0] || 'http://localhost:3000';
+  return (await getStoredApiBaseUrl().catch(() => '')) || candidates[0] || 'http://localhost:3000';
 };
 
 const API_BASE_URL = isServer ? DEFAULT_API_BASE_URL : (process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_BASE_URL);
@@ -75,7 +78,7 @@ class AnimeFireClient {
     if (filters?.classificacao) params.append('classificacao', filters.classificacao);
 
     const queryString = params.toString();
-    const candidates = getApiCandidates();
+    const candidates = await getApiCandidates();
     let lastError: unknown;
 
     for (const baseUrl of candidates) {
@@ -122,7 +125,7 @@ class AnimeFireClient {
   }
 
   async pesquisar(busca: string, page: number = 1): Promise<AnimeFireResponse> {
-    const candidates = getApiCandidates();
+    const candidates = await getApiCandidates();
     let lastError: unknown;
 
     for (const baseUrl of candidates) {
@@ -147,7 +150,7 @@ class AnimeFireClient {
 
   async getAnimeDetails(slug: string): Promise<any> {
     const animeLink = `https://animefire.io/animes/${slug}`;
-    const candidates = getApiCandidates();
+    const candidates = await getApiCandidates();
     let lastError: unknown;
 
     for (const baseUrl of candidates) {

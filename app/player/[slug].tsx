@@ -14,17 +14,23 @@ import {
 import { Platform } from "react-native";
 import { WebView } from "react-native-webview";
 
+import { getStoredApiBaseUrl } from "@/lib/runtime-settings";
+import { useWatchHistory } from "@/lib/hooks/use-watch-history";
+
 // Detectar se está no servidor ou cliente
 const isServer = typeof window === "undefined";
-const DEFAULT_API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-const getApiCandidates = () => {
+const DEFAULT_API_BASE_URL = "http://localhost:3000";
+const getApiCandidates = async () => {
+  const storedUrl = await getStoredApiBaseUrl().catch(() => "");
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   const candidates = [
-    envUrl,
-    DEFAULT_API_BASE_URL,
+    storedUrl,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    envUrl,
+    DEFAULT_API_BASE_URL,
   ];
 
   if (typeof window !== "undefined") {
@@ -32,6 +38,8 @@ const getApiCandidates = () => {
     candidates.unshift(
       `${protocol}//${hostname}:3000`,
       `${protocol}//127.0.0.1:3000`,
+      `${protocol}//${hostname}:3001`,
+      `${protocol}//127.0.0.1:3001`,
     );
   }
 
@@ -39,7 +47,7 @@ const getApiCandidates = () => {
 };
 
 const resolveApiBaseUrl = async () => {
-  const candidates = getApiCandidates();
+  const candidates = await getApiCandidates();
 
   for (const baseUrl of candidates) {
     try {
@@ -55,12 +63,10 @@ const resolveApiBaseUrl = async () => {
     }
   }
 
-  return candidates[0] || DEFAULT_API_BASE_URL;
+  return (await getStoredApiBaseUrl().catch(() => "")) || DEFAULT_API_BASE_URL;
 };
 
-const API_BASE_URL = isServer
-  ? DEFAULT_API_BASE_URL
-  : process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
+const API_BASE_URL = isServer ? DEFAULT_API_BASE_URL : DEFAULT_API_BASE_URL;
 
 interface PlayerState {
   isPlaying: boolean;
@@ -87,6 +93,9 @@ export default function PlayerScreen() {
   });
   const [videoData, setVideoData] = useState<any>(null);
   const [useWebView, setUseWebView] = useState(false);
+  const [resolvedApiBaseUrl, setResolvedApiBaseUrl] = useState<string>(
+    DEFAULT_API_BASE_URL,
+  );
 
   const {
     shouldShowAd,
@@ -96,13 +105,29 @@ export default function PlayerScreen() {
     isWeb,
     frequencyData,
   } = useAdMobAds();
+  const { addOrUpdateHistoryItem } = useWatchHistory();
   const getErrorMessage = (error: unknown) =>
     error instanceof Error ? error.message : String(error);
 
   const getEffectiveApiBaseUrl = async () => {
     const resolved = await resolveApiBaseUrl();
+    setResolvedApiBaseUrl(resolved);
     return resolved;
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    resolveApiBaseUrl().then((resolved) => {
+      if (isMounted) {
+        setResolvedApiBaseUrl(resolved);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const parseQualityValue = (label?: string) => {
     const match = String(label || "0p").match(/(\d+)/);
@@ -165,8 +190,27 @@ export default function PlayerScreen() {
   );
 
   useEffect(() => {
+    if (!player) return;
+
+    const saveProgress = () => {
+      const duration = Number(player.duration ?? 0);
+      if (!duration || !Number.isFinite(duration)) {
+        return;
+      }
+
+      const currentTime = Number(player.currentTime ?? 0);
+      const progress = Math.min(Math.max(currentTime / duration, 0), 1);
+      void persistWatchProgress(progress);
+    };
+
+    const interval = setInterval(saveProgress, 5000);
+    return () => clearInterval(interval);
+  }, [player, slug, episode]);
+
+  useEffect(() => {
     const normalizedUrl = Array.isArray(url) ? url[0] : url;
     if (normalizedUrl || slug) {
+      persistWatchProgress(0);
       extractVideoData();
     }
   }, [slug, episode, url]);
@@ -275,7 +319,7 @@ export default function PlayerScreen() {
     contentType?: string;
   }) => {
     const safeContentType = typeof contentType === "string" ? contentType : "";
-    const proxyVideoUrl = `${API_BASE_URL}/proxy-video?videoUrl=${encodeURIComponent(videoUrl)}&episodeUrl=${encodeURIComponent(episodeUrl || "")}`;
+    const proxyVideoUrl = `${resolvedApiBaseUrl}/proxy-video?videoUrl=${encodeURIComponent(videoUrl)}&episodeUrl=${encodeURIComponent(episodeUrl || "")}`;
     const hlsPlaylist =
       isHlsStream(videoUrl) ||
       isHlsStream(proxyVideoUrl) ||
@@ -973,6 +1017,24 @@ export default function PlayerScreen() {
       setError("Erro ao carregar vídeo");
       setLoading(false);
     }
+  };
+
+  const persistWatchProgress = async (progress = 0) => {
+    const resolvedSlug = Array.isArray(slug) ? slug[0] : slug;
+    const resolvedEpisode = Number(Array.isArray(episode) ? episode[0] : episode ?? 1);
+    if (!resolvedSlug) return;
+
+    const animeTitle = decodeURIComponent(String(resolvedSlug)).replace(/-/g, " ");
+
+    await addOrUpdateHistoryItem({
+      animeSlug: resolvedSlug,
+      animeTitle: animeTitle || resolvedSlug,
+      episode: Number.isFinite(resolvedEpisode) ? resolvedEpisode : 1,
+      season: 1,
+      progress: Math.min(Math.max(progress, 0), 1),
+      lastWatchedAt: Date.now(),
+      totalDuration: 0,
+    });
   };
 
   const handlePlayPause = () => {

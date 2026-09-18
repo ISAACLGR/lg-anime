@@ -3,12 +3,16 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Image, Scr
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import axios from 'axios';
 
+import { getStoredApiBaseUrl } from '@/lib/runtime-settings';
+
 // Detectar se está no servidor ou cliente
 const isServer = typeof window === 'undefined';
 const DEFAULT_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-const getApiCandidates = () => {
+const getApiCandidates = async () => {
+  const storedUrl = await getStoredApiBaseUrl().catch(() => '');
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   const candidates = [
+    storedUrl,
     envUrl,
     DEFAULT_API_BASE_URL,
     'http://localhost:3000',
@@ -27,7 +31,7 @@ const getApiCandidates = () => {
 };
 
 const resolveApiBaseUrl = async () => {
-  const candidates = getApiCandidates();
+  const candidates = await getApiCandidates();
 
   for (const baseUrl of candidates) {
     try {
@@ -40,7 +44,7 @@ const resolveApiBaseUrl = async () => {
     }
   }
 
-  return candidates[0] || DEFAULT_API_BASE_URL;
+  return (await getStoredApiBaseUrl().catch(() => '')) || candidates[0] || DEFAULT_API_BASE_URL;
 };
 
 const API_BASE_URL = isServer ? DEFAULT_API_BASE_URL : (process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_BASE_URL);

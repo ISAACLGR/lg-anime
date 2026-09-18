@@ -1,57 +1,28 @@
-import { ScrollView, Text, View, TouchableOpacity, FlatList, Image, ActivityIndicator } from "react-native";
-import { useState, useEffect } from "react";
-import { ScreenContainer } from "@/components/screen-container";
+import {
+  ScrollView,
+  Text,
+  View,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 
-interface Anime {
-  id: string;
-  title: string;
-  slug: string;
-  cover: string;
-  rating: number;
-  year: number;
-  episodes: number;
-  status: "Em Exibição" | "Finalizado";
-  genres: string[];
-}
+import { ScreenContainer } from "@/components/screen-container";
+import { useFavorites } from "@/lib/hooks/use-favorites";
+import { useWatchHistory } from "@/lib/hooks/use-watch-history";
 
 export default function FavoritesScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [favorites, setFavorites] = useState<Anime[]>([]);
+  const { favorites, loading, removeFavorite, reload: reloadFavorites } = useFavorites();
+  const { history, reload: reloadHistory } = useWatchHistory();
 
   useFocusEffect(
     useCallback(() => {
-      // TODO: Load favorites from AsyncStorage
-      const mockFavorites: Anime[] = [
-        {
-          id: "1",
-          title: "Bleach: Thousand-Year Blood War",
-          slug: "bleach-thousand-year-blood-war",
-          cover: "https://via.placeholder.com/300x400?text=Bleach",
-          rating: 9.0,
-          year: 2022,
-          episodes: 13,
-          status: "Finalizado",
-          genres: ["Ação", "Sobrenatural"],
-        },
-        {
-          id: "2",
-          title: "Frieren: Beyond Journey's End Season 2",
-          slug: "frieren-beyond-journeys-end-season-2",
-          cover: "https://via.placeholder.com/300x400?text=Frieren",
-          rating: 9.3,
-          year: 2026,
-          episodes: 10,
-          status: "Em Exibição",
-          genres: ["Aventura", "Fantasia"],
-        },
-      ];
-
-      setFavorites(mockFavorites);
-      setLoading(false);
-    }, [])
+      reloadFavorites();
+      reloadHistory();
+    }, [reloadFavorites, reloadHistory]),
   );
 
   const handleAnimePress = (slug: string) => {
@@ -61,12 +32,25 @@ export default function FavoritesScreen() {
     });
   };
 
-  const handleRemoveFavorite = (id: string) => {
-    setFavorites(favorites.filter((anime) => anime.id !== id));
-    // TODO: Remove from AsyncStorage
+  const handleContinueWatching = (animeSlug: string, episode: number) => {
+    router.push({
+      pathname: "/player/[slug]",
+      params: {
+        slug: animeSlug,
+        episode: String(episode),
+      },
+    });
   };
 
-  const AnimeCard = ({ anime }: { anime: Anime }) => (
+  const handleRemoveFavorite = async (slug: string) => {
+    await removeFavorite(slug);
+  };
+
+  const AnimeCard = ({
+    anime,
+  }: {
+    anime: { slug: string; title: string; cover: string; rating: number; addedAt: number };
+  }) => (
     <TouchableOpacity
       onPress={() => handleAnimePress(anime.slug)}
       className="flex-row bg-surface rounded-lg overflow-hidden mb-3 border border-border"
@@ -82,14 +66,15 @@ export default function FavoritesScreen() {
             {anime.title}
           </Text>
           <View className="flex-row items-center gap-2 mt-1">
-            <Text className="text-xs text-primary font-bold">⭐ {anime.rating}</Text>
-            <Text className="text-xs text-muted">{anime.episodes} eps</Text>
-            <Text className="text-xs text-muted">{anime.year}</Text>
+            <Text className="text-xs text-primary font-bold">⭐ {anime.rating || "-"}</Text>
+            <Text className="text-xs text-muted">
+              {new Date(anime.addedAt).toLocaleDateString("pt-BR")}
+            </Text>
           </View>
         </View>
         <View className="flex-row gap-2">
           <TouchableOpacity
-            onPress={() => handleRemoveFavorite(anime.id)}
+            onPress={() => handleRemoveFavorite(anime.slug)}
             className="flex-1 bg-error/20 py-2 rounded items-center"
           >
             <Text className="text-error text-xs font-semibold">Remover</Text>
@@ -116,7 +101,6 @@ export default function FavoritesScreen() {
   return (
     <ScreenContainer className="p-0">
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View className="px-4 py-4 bg-gradient-to-r from-primary to-pink-500">
           <Text className="text-2xl font-bold text-white">Favoritos</Text>
           <Text className="text-sm text-white/80 mt-1">
@@ -124,7 +108,24 @@ export default function FavoritesScreen() {
           </Text>
         </View>
 
-        {/* Favorites List */}
+        {history.length > 0 && (
+          <View className="px-4 py-4 border-b border-border">
+            <Text className="text-sm font-bold text-primary mb-3">CONTINUAR ASSISTINDO</Text>
+            {history.slice(0, 4).map((item) => (
+              <TouchableOpacity
+                key={`${item.animeSlug}-${item.episode}`}
+                onPress={() => handleContinueWatching(item.animeSlug, item.episode)}
+                className="bg-surface border border-border rounded-lg p-3 mb-2"
+              >
+                <Text className="text-foreground font-semibold">{item.animeTitle || item.animeSlug}</Text>
+                <Text className="text-sm text-muted mt-1">
+                  Episódio {item.episode} · {Math.round(item.progress * 100)}% assistido
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         <View className="px-4 py-4">
           {favorites.length === 0 ? (
             <View className="items-center justify-center py-12">
@@ -137,7 +138,7 @@ export default function FavoritesScreen() {
           ) : (
             <View>
               {favorites.map((anime) => (
-                <AnimeCard key={anime.id} anime={anime} />
+                <AnimeCard key={anime.slug} anime={anime} />
               ))}
             </View>
           )}

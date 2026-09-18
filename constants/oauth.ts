@@ -1,6 +1,8 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
 
+import { getStoredOauthServerUrl } from "@/lib/runtime-settings";
+
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
 const bundleId = "space.manus.animeFireApiCliente.t20260131064251";
@@ -23,6 +25,10 @@ export const APP_ID = env.appId;
 export const OWNER_OPEN_ID = env.ownerId;
 export const OWNER_NAME = env.ownerName;
 export const API_BASE_URL = env.apiBaseUrl;
+
+export async function resolveOauthServerUrl(): Promise<string> {
+  return getStoredOauthServerUrl().catch(() => OAUTH_SERVER_URL || env.server);
+}
 
 /**
  * Get the API base URL, deriving from current hostname if not set.

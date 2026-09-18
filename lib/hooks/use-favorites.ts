@@ -1,7 +1,12 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-const FAVORITES_KEY = "@animfire:favorites";
+import {
+  clearFavorites,
+  initializeSqlite,
+  listFavorites,
+  removeFavoriteBySlug,
+  upsertFavorite,
+} from "@/lib/sqlite-db";
 
 export interface FavoriteAnime {
   slug: string;
@@ -11,27 +16,21 @@ export interface FavoriteAnime {
   addedAt: number;
 }
 
-/**
- * Hook para gerenciar animes favoritos
- * Persiste os dados em AsyncStorage
- */
 export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteAnime[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load favorites from AsyncStorage on mount
   useEffect(() => {
-    loadFavorites();
+    void initializeSqlite();
+    void loadFavorites();
   }, []);
 
   const loadFavorites = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await AsyncStorage.getItem(FAVORITES_KEY);
-      if (data) {
-        setFavorites(JSON.parse(data));
-      }
+      const rows = listFavorites();
+      setFavorites(rows);
       setError(null);
     } catch (err) {
       console.error("Error loading favorites:", err);
@@ -44,8 +43,12 @@ export function useFavorites() {
   const addFavorite = useCallback(
     async (anime: FavoriteAnime) => {
       try {
-        const updated = [...favorites, anime];
-        await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+        const normalized = favorites.filter((fav) => fav.slug !== anime.slug);
+        const updated = [anime, ...normalized].sort(
+          (a, b) => (b.addedAt || 0) - (a.addedAt || 0),
+        );
+
+        upsertFavorite({ ...anime, addedAt: anime.addedAt || Date.now() });
         setFavorites(updated);
         return true;
       } catch (err) {
@@ -54,14 +57,14 @@ export function useFavorites() {
         return false;
       }
     },
-    [favorites]
+    [favorites],
   );
 
   const removeFavorite = useCallback(
     async (slug: string) => {
       try {
+        removeFavoriteBySlug(slug);
         const updated = favorites.filter((fav) => fav.slug !== slug);
-        await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
         setFavorites(updated);
         return true;
       } catch (err) {
@@ -70,19 +73,17 @@ export function useFavorites() {
         return false;
       }
     },
-    [favorites]
+    [favorites],
   );
 
   const isFavorite = useCallback(
-    (slug: string) => {
-      return favorites.some((fav) => fav.slug === slug);
-    },
-    [favorites]
+    (slug: string) => favorites.some((fav) => fav.slug === slug),
+    [favorites],
   );
 
-  const clearFavorites = useCallback(async () => {
+  const clearFavoritesList = useCallback(async () => {
     try {
-      await AsyncStorage.removeItem(FAVORITES_KEY);
+      clearFavorites();
       setFavorites([]);
       return true;
     } catch (err) {
@@ -99,7 +100,7 @@ export function useFavorites() {
     addFavorite,
     removeFavorite,
     isFavorite,
-    clearFavorites,
+    clearFavorites: clearFavoritesList,
     reload: loadFavorites,
   };
 }
