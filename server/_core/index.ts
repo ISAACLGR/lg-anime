@@ -75,32 +75,12 @@ async function startServer() {
         }
     });
 
-    app.get("/api/animefire/top-animes/:page?", async (req, res) => {
-        try {
-            const result = await apiFireAnime.topAnimes(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] top-animes error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
     app.get("/api/animefire/pesquisar", async (req, res) => {
         try {
             const result = await apiFireAnime.pesquisar(req);
             res.json(result);
         } catch (error) {
             console.error("[AnimeFire] pesquisar error:", error);
-            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
-        }
-    });
-
-    app.get("/api/animefire/animes-atualizados/:page?", async (req, res) => {
-        try {
-            const result = await apiFireAnime.animesAtualizados(req);
-            res.json(result);
-        } catch (error) {
-            console.error("[AnimeFire] animes-atualizados error:", error);
             res.status(500).json({error: "Failed to fetch data from AnimeFire"});
         }
     });

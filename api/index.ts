@@ -52,17 +52,6 @@ app.get('/api/animefire/em-lancamento/:page?', async (req, res) => {
   }
 });
 
-app.get('/api/animefire/top-animes/:page?', async (req, res) => {
-  try {
-    const api = await getApiFireAnime();
-    const result = await api.topAnimes(req);
-    res.json(result);
-  } catch (error) {
-    console.error('[AnimeFire] top-animes error:', error);
-    res.status(500).json({ error: 'Failed to fetch data from AnimeFire' });
-  }
-});
-
 app.get('/api/animefire/pesquisar', async (req, res) => {
   try {
     const api = await getApiFireAnime();
@@ -70,17 +59,6 @@ app.get('/api/animefire/pesquisar', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('[AnimeFire] pesquisar error:', error);
-    res.status(500).json({ error: 'Failed to fetch data from AnimeFire' });
-  }
-});
-
-app.get('/api/animefire/animes-atualizados/:page?', async (req, res) => {
-  try {
-    const api = await getApiFireAnime();
-    const result = await api.animesAtualizados(req);
-    res.json(result);
-  } catch (error) {
-    console.error('[AnimeFire] animes-atualizados error:', error);
     res.status(500).json({ error: 'Failed to fetch data from AnimeFire' });
   }
 });

@@ -109,11 +109,9 @@ class AnimeFireClient {
   }
 
   async animesAtualizados(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
-    return await this.fetchFromServer('animes-atualizados', page, filters);
-  }
-
-  async topAnimes(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
-    return await this.fetchFromServer('top-animes', page, filters);
+    // A rota antiga /animes/atualizados não existe mais; usamos o endpoint
+    // de lançamento como fallback para evitar quebra na listagem.
+    return await this.fetchFromServer('em-lancamento', page, filters);
   }
 
   async listaDeAnimesLegendados(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {

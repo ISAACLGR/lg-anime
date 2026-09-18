@@ -159,12 +159,6 @@ export default function ExploreScreen() {
         case "em-lancamento":
           response = await animeFireClient.emLancamento(pageNum, filterParams);
           break;
-        case "animes-atualizados":
-          response = await animeFireClient.animesAtualizados(pageNum, filterParams);
-          break;
-        case "top-animes":
-          response = await animeFireClient.topAnimes(pageNum, filterParams);
-          break;
         case "legendados":
           response = await animeFireClient.listaDeAnimesLegendados(pageNum, filterParams);
           break;
@@ -233,8 +227,6 @@ export default function ExploreScreen() {
   const getCategoryLabel = (category: string): string => {
     const labels = {
       "em-lancamento": "Em Lancamento",
-      "animes-atualizados": "Animes Atualizados",
-      "top-animes": "Top Animes",
       "legendados": "Legendados",
       "dublados": "Dublados"
     };
@@ -325,8 +317,6 @@ export default function ExploreScreen() {
             >
               {[
                 { key: "em-lancamento", label: "Em Lancamento" },
-                { key: "animes-atualizados", label: "Animes Atualizados" },
-                { key: "top-animes", label: "Top Animes" },
                 { key: "legendados", label: "Legendados" },
                 { key: "dublados", label: "Dublados" }
               ].map((category) => (
