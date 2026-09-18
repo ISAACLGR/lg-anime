@@ -16,6 +16,7 @@ import { WebView } from "react-native-webview";
 
 import { getStoredApiBaseUrl } from "@/lib/runtime-settings";
 import { useWatchHistory } from "@/lib/hooks/use-watch-history";
+import { listFavorites } from "@/lib/sqlite-db";
 
 // Detectar se está no servidor ou cliente
 const isServer = typeof window === "undefined";
@@ -1025,10 +1026,14 @@ export default function PlayerScreen() {
     if (!resolvedSlug) return;
 
     const animeTitle = decodeURIComponent(String(resolvedSlug)).replace(/-/g, " ");
+    const favoriteCover =
+      listFavorites().find((item) => item.slug === resolvedSlug)?.cover ||
+      "https://placehold.co/400x600/7C3AED/FFFFFF?text=Anime";
 
     await addOrUpdateHistoryItem({
       animeSlug: resolvedSlug,
       animeTitle: animeTitle || resolvedSlug,
+      cover: favoriteCover,
       episode: Number.isFinite(resolvedEpisode) ? resolvedEpisode : 1,
       season: 1,
       progress: Math.min(Math.max(progress, 0), 1),

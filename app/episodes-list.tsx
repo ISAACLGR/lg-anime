@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Image, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import axios from 'axios';
 
+import { useFavorites } from '@/lib/hooks/use-favorites';
 import { getStoredApiBaseUrl } from '@/lib/runtime-settings';
 
-// Detectar se está no servidor ou cliente
-const isServer = typeof window === 'undefined';
 const DEFAULT_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const getApiCandidates = async () => {
   const storedUrl = await getStoredApiBaseUrl().catch(() => '');
@@ -47,8 +46,6 @@ const resolveApiBaseUrl = async () => {
   return (await getStoredApiBaseUrl().catch(() => '')) || candidates[0] || DEFAULT_API_BASE_URL;
 };
 
-const API_BASE_URL = isServer ? DEFAULT_API_BASE_URL : (process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_BASE_URL);
-
 interface Episode {
   href: string;
   text: string;
@@ -73,7 +70,9 @@ interface AnimeData {
 export default function EpisodesListScreen() {
   const { slug } = useLocalSearchParams();
   const router = useRouter();
+  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
   const [animeData, setAnimeData] = useState<AnimeData | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
 
   const normalizeSlug = (rawSlug: string | string[] | undefined) => {
     const value = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
@@ -96,17 +95,9 @@ export default function EpisodesListScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const normalizedSlug = normalizeSlug(slug);
-    if (normalizedSlug) {
-      fetchEpisodes(normalizedSlug);
-    } else {
-      setError('Slug do anime inválido');
-      setLoading(false);
-    }
-  }, [slug]);
+  const favoriteSlug = normalizeSlug(slug);
 
-  const fetchEpisodes = async (normalizedSlug?: string) => {
+  const fetchEpisodes = useCallback(async (normalizedSlug?: string) => {
     try {
       const startedAt = Date.now();
       console.log('[episodes-list] Iniciando carregamento do anime:', { slug, normalizedSlug, startedAt });
@@ -132,6 +123,44 @@ export default function EpisodesListScreen() {
       console.log('[episodes-list] Finalizado carregamento em ms:', finishedAt);
       setLoading(false);
     }
+  }, [slug]);
+
+  useEffect(() => {
+    if (favoriteSlug) {
+      void fetchEpisodes(favoriteSlug);
+    } else {
+      setError('Slug do anime inválido');
+      setLoading(false);
+    }
+  }, [favoriteSlug, fetchEpisodes]);
+
+  useEffect(() => {
+    if (favoriteSlug) {
+      setIsFavorited(isFavorite(favoriteSlug));
+    } else {
+      setIsFavorited(false);
+    }
+  }, [favoriteSlug, isFavorite]);
+
+  const handleToggleFavorite = async () => {
+    if (!animeData || !favoriteSlug) return;
+
+    const favoriteAnime = {
+      slug: favoriteSlug,
+      title: animeData.anime_title || favoriteSlug,
+      cover: animeData.anime_image || '',
+      rating: Number.parseFloat(String(animeData.anime_score || '0')) || 0,
+      addedAt: Date.now(),
+    };
+
+    if (isFavorited) {
+      await removeFavorite(favoriteSlug);
+      setIsFavorited(false);
+      return;
+    }
+
+    await addFavorite(favoriteAnime);
+    setIsFavorited(true);
   };
 
   const buildEpisodeUrl = (animeSlug: string | string[] | undefined, episodeNumber: number) => {
@@ -191,8 +220,19 @@ export default function EpisodesListScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.animeTitle}>{animeData.anime_title}</Text>
-          <View style={styles.scoreBadge}>
-            <Text style={styles.score}>⭐ {animeData.anime_score}</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => void handleToggleFavorite()}
+              style={[styles.favoriteButton, isFavorited && styles.favoriteButtonActive]}
+            >
+              <Text style={[styles.favoriteButtonText, isFavorited && styles.favoriteButtonTextActive]}>
+                {isFavorited ? '♥' : '♡'}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.scoreBadge}>
+              <Text style={styles.score}>⭐ {animeData.anime_score}</Text>
+            </View>
           </View>
         </View>
         <Text style={styles.animeSubtitle}>{animeData.anime_title1}</Text>
@@ -257,7 +297,7 @@ export default function EpisodesListScreen() {
               <Text style={styles.episodeDuration}>Duração: ~24 min</Text>
             </View>
             <View style={styles.episodeActions}>
-              <TouchableOpacity style={styles.playButton}>
+              <TouchableOpacity style={styles.playButton} onPress={() => handlePlayEpisode(episode.href || '#', index + 1)}>
                 <Text style={styles.playButtonText}>▶</Text>
               </TouchableOpacity>
             </View>
@@ -306,6 +346,32 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  favoriteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  favoriteButtonActive: {
+    backgroundColor: '#ffe4e6',
+    borderColor: '#f43f5e',
+  },
+  favoriteButtonText: {
+    fontSize: 18,
+    color: '#4b5563',
+  },
+  favoriteButtonTextActive: {
+    color: '#e11d48',
   },
   scoreBadge: {
     backgroundColor: '#7C3AED',
@@ -429,6 +495,9 @@ const styles = StyleSheet.create({
   },
   episodeActions: {
     marginLeft: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   playButton: {
     width: 40,

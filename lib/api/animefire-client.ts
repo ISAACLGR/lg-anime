@@ -59,6 +59,8 @@ export interface VideoExtractionResult {
   errors?: string[];
 }
 
+import { getStoredApiBaseUrl } from "@/lib/runtime-settings";
+
 export interface AnimeFireApiConfig {
   baseUrl?: string;
   apiKey?: string;
@@ -71,9 +73,47 @@ class AnimeFireClient {
   private timeout: number;
 
   constructor(config: AnimeFireApiConfig = {}) {
-    this.baseUrl = config.baseUrl || 'http://localhost:3000'; // CORRIGIDO: porta 3000
+    this.baseUrl = (config.baseUrl || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
     this.apiKey = config.apiKey || 'anfire123';
     this.timeout = config.timeout || 10000;
+  }
+
+  private async resolveBaseUrl(): Promise<string> {
+    const storedUrl = await getStoredApiBaseUrl().catch(() => '');
+    const envUrl = process.env.EXPO_PUBLIC_API_URL || '';
+    const candidates = [
+      storedUrl,
+      envUrl,
+      this.baseUrl,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    ];
+
+    if (typeof window !== 'undefined') {
+      const { protocol, hostname } = window.location;
+      candidates.unshift(
+        `${protocol}//${hostname}:3000`,
+        `${protocol}//127.0.0.1:3000`,
+      );
+    }
+
+    for (const candidate of Array.from(new Set(candidates.filter(Boolean) as string[]))) {
+      try {
+        const response = await fetch(`${candidate}/api/health`, {
+          method: 'GET',
+          cache: 'no-store',
+        });
+
+        if (response.ok) {
+          this.baseUrl = candidate.replace(/\/$/, '');
+          return this.baseUrl;
+        }
+      } catch {
+        // tenta o próximo candidato
+      }
+    }
+
+    return (storedUrl || envUrl || this.baseUrl || 'http://localhost:3000').replace(/\/$/, '');
   }
 
   /**
@@ -172,6 +212,7 @@ class AnimeFireClient {
    */
   private async makeRequest<T>(endpoint: string, method: 'GET' | 'POST' = 'GET', body?: any): Promise<T> {
     try {
+      const baseUrl = await this.resolveBaseUrl();
       const config: RequestInit = {
         method,
         headers: {
@@ -185,7 +226,7 @@ class AnimeFireClient {
         config.body = JSON.stringify(body);
       }
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+      const response = await fetch(`${baseUrl}${endpoint}`, config);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

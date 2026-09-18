@@ -11,6 +11,7 @@ import {
 export interface WatchHistoryItem {
   animeSlug: string;
   animeTitle: string;
+  cover?: string;
   episode: number;
   season: number;
   progress: number;
@@ -66,6 +67,7 @@ export function useWatchHistory() {
         upsertWatchHistory({
           animeSlug: item.animeSlug,
           animeTitle: item.animeTitle,
+          cover: item.cover || "",
           episode: item.episode,
           season: item.season,
           progress: item.progress,

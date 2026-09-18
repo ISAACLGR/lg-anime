@@ -12,6 +12,7 @@ export type FavoriteRow = {
 export type WatchHistoryRow = {
   animeSlug: string;
   animeTitle: string;
+  cover?: string;
   episode: number;
   season: number;
   progress: number;
@@ -77,6 +78,7 @@ const ensureSchema = () => {
     CREATE TABLE IF NOT EXISTS watch_history (
       animeSlug TEXT NOT NULL,
       animeTitle TEXT NOT NULL,
+      cover TEXT DEFAULT '',
       episode INTEGER NOT NULL,
       season INTEGER NOT NULL DEFAULT 1,
       progress REAL NOT NULL DEFAULT 0,
@@ -180,7 +182,7 @@ export const listWatchHistory = (): WatchHistoryRow[] => {
   }
 
   ensureSchema();
-  return db.getAllSync<WatchHistoryRow>(`SELECT animeSlug, animeTitle, episode, season, progress, lastWatchedAt, totalDuration FROM watch_history ORDER BY lastWatchedAt DESC`);
+  return db.getAllSync<WatchHistoryRow>(`SELECT animeSlug, animeTitle, cover, episode, season, progress, lastWatchedAt, totalDuration FROM watch_history ORDER BY lastWatchedAt DESC`);
 };
 
 export const upsertWatchHistory = (item: WatchHistoryRow) => {
@@ -193,9 +195,9 @@ export const upsertWatchHistory = (item: WatchHistoryRow) => {
 
   ensureSchema();
   db.runSync(
-    `INSERT OR REPLACE INTO watch_history (animeSlug, animeTitle, episode, season, progress, lastWatchedAt, totalDuration)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [item.animeSlug, item.animeTitle, item.episode, item.season, item.progress, item.lastWatchedAt, item.totalDuration],
+    `INSERT OR REPLACE INTO watch_history (animeSlug, animeTitle, cover, episode, season, progress, lastWatchedAt, totalDuration)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [item.animeSlug, item.animeTitle, item.cover || '', item.episode, item.season, item.progress, item.lastWatchedAt, item.totalDuration],
   );
 };
 

@@ -27,7 +27,7 @@ export default function FavoritesScreen() {
 
   const handleAnimePress = (slug: string) => {
     router.push({
-      pathname: "/anime/[slug]",
+      pathname: "/episodes-list",
       params: { slug },
     });
   };
@@ -48,15 +48,27 @@ export default function FavoritesScreen() {
 
   const AnimeCard = ({
     anime,
+    showRemove = true,
+    subtitle,
+    actionLabel = "Assistir",
+    onAction,
   }: {
     anime: { slug: string; title: string; cover: string; rating: number; addedAt: number };
+    showRemove?: boolean;
+    subtitle?: string;
+    actionLabel?: string;
+    onAction?: (anime: { slug: string; title: string; cover: string; rating: number; addedAt: number }) => void;
   }) => (
     <TouchableOpacity
-      onPress={() => handleAnimePress(anime.slug)}
+      onPress={() => (onAction ? onAction(anime) : handleAnimePress(anime.slug))}
       className="flex-row bg-surface rounded-lg overflow-hidden mb-3 border border-border"
     >
       <Image
-        source={{ uri: anime.cover }}
+        source={{
+          uri:
+            anime.cover ||
+            "https://placehold.co/400x600/7C3AED/FFFFFF?text=Anime",
+        }}
         className="w-24 h-32 bg-muted"
         resizeMode="cover"
       />
@@ -65,6 +77,9 @@ export default function FavoritesScreen() {
           <Text className="text-base font-bold text-foreground line-clamp-2">
             {anime.title}
           </Text>
+          {subtitle ? (
+            <Text className="text-xs text-muted mt-1">{subtitle}</Text>
+          ) : null}
           <View className="flex-row items-center gap-2 mt-1">
             <Text className="text-xs text-primary font-bold">⭐ {anime.rating || "-"}</Text>
             <Text className="text-xs text-muted">
@@ -73,17 +88,19 @@ export default function FavoritesScreen() {
           </View>
         </View>
         <View className="flex-row gap-2">
+          {showRemove ? (
+            <TouchableOpacity
+              onPress={() => handleRemoveFavorite(anime.slug)}
+              className="flex-1 bg-error/20 py-2 rounded items-center"
+            >
+              <Text className="text-error text-xs font-semibold">Remover</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
-            onPress={() => handleRemoveFavorite(anime.slug)}
-            className="flex-1 bg-error/20 py-2 rounded items-center"
+            onPress={() => (onAction ? onAction(anime) : handleAnimePress(anime.slug))}
+            className={`${showRemove ? "flex-1" : "flex-1"} bg-primary py-2 rounded items-center`}
           >
-            <Text className="text-error text-xs font-semibold">Remover</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleAnimePress(anime.slug)}
-            className="flex-1 bg-primary py-2 rounded items-center"
-          >
-            <Text className="text-white text-xs font-semibold">Assistir</Text>
+            <Text className="text-white text-xs font-semibold">{actionLabel}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -111,18 +128,30 @@ export default function FavoritesScreen() {
         {history.length > 0 && (
           <View className="px-4 py-4 border-b border-border">
             <Text className="text-sm font-bold text-primary mb-3">CONTINUAR ASSISTINDO</Text>
-            {history.slice(0, 4).map((item) => (
-              <TouchableOpacity
-                key={`${item.animeSlug}-${item.episode}`}
-                onPress={() => handleContinueWatching(item.animeSlug, item.episode)}
-                className="bg-surface border border-border rounded-lg p-3 mb-2"
-              >
-                <Text className="text-foreground font-semibold">{item.animeTitle || item.animeSlug}</Text>
-                <Text className="text-sm text-muted mt-1">
-                  Episódio {item.episode} · {Math.round(item.progress * 100)}% assistido
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {history.slice(0, 4).map((item) => {
+              const favoriteMatch = favorites.find((favorite) => favorite.slug === item.animeSlug);
+              const cardAnime = {
+                slug: item.animeSlug,
+                title: item.animeTitle || item.animeSlug,
+                cover:
+                  favoriteMatch?.cover ||
+                  item.cover ||
+                  "https://placehold.co/400x600/7C3AED/FFFFFF?text=Anime",
+                rating: favoriteMatch?.rating || 0,
+                addedAt: favoriteMatch?.addedAt || item.lastWatchedAt,
+              };
+
+              return (
+                <AnimeCard
+                  key={`${item.animeSlug}-${item.episode}`}
+                  anime={cardAnime}
+                  showRemove={false}
+                  subtitle={`Episódio ${item.episode} · ${Math.round(item.progress * 100)}% assistido`}
+                  actionLabel="Continuar"
+                  onAction={() => handleContinueWatching(item.animeSlug, item.episode)}
+                />
+              );
+            })}
           </View>
         )}
 
