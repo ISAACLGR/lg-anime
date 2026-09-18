@@ -201,7 +201,9 @@ export default function PlayerScreen() {
 
       const currentTime = Number(player.currentTime ?? 0);
       const progress = Math.min(Math.max(currentTime / duration, 0), 1);
-      void persistWatchProgress(progress);
+      if (currentTime > 5 || progress >= 0.05) {
+        void persistWatchProgress(progress);
+      }
     };
 
     const interval = setInterval(saveProgress, 5000);
@@ -211,7 +213,6 @@ export default function PlayerScreen() {
   useEffect(() => {
     const normalizedUrl = Array.isArray(url) ? url[0] : url;
     if (normalizedUrl || slug) {
-      persistWatchProgress(0);
       extractVideoData();
     }
   }, [slug, episode, url]);
@@ -1025,14 +1026,21 @@ export default function PlayerScreen() {
     const resolvedEpisode = Number(Array.isArray(episode) ? episode[0] : episode ?? 1);
     if (!resolvedSlug) return;
 
-    const animeTitle = decodeURIComponent(String(resolvedSlug)).replace(/-/g, " ");
+    const favoriteMatch = listFavorites().find((item) => item.slug === resolvedSlug);
+    const rawSlugTitle = decodeURIComponent(String(resolvedSlug))
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const animeTitle =
+      favoriteMatch?.title ||
+      (rawSlugTitle ? rawSlugTitle.replace(/\b\w/g, (char) => char.toUpperCase()) : resolvedSlug);
     const favoriteCover =
-      listFavorites().find((item) => item.slug === resolvedSlug)?.cover ||
+      favoriteMatch?.cover ||
       "https://placehold.co/400x600/7C3AED/FFFFFF?text=Anime";
 
     await addOrUpdateHistoryItem({
       animeSlug: resolvedSlug,
-      animeTitle: animeTitle || resolvedSlug,
+      animeTitle,
       cover: favoriteCover,
       episode: Number.isFinite(resolvedEpisode) ? resolvedEpisode : 1,
       season: 1,

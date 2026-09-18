@@ -1,8 +1,10 @@
 import { ScrollView, Text, View, TouchableOpacity, FlatList, Image, ActivityIndicator, TextInput } from "react-native";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { animeFireClient } from "@/lib/api/animeFire/anime-fire-client";
+import { useFavorites } from "@/lib/hooks/use-favorites";
+import { useWatchHistory } from "@/lib/hooks/use-watch-history";
 
 interface AnimeDisplay {
   title: string;
@@ -29,12 +31,21 @@ const normalizeAnimeImage = (image?: string) => {
 export default function HomeScreen() {
   const router = useRouter();
   const mountedRef = useRef(true);
+  const { favorites, reload: reloadFavorites } = useFavorites();
+  const { history, reload: reloadHistory } = useWatchHistory();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [featured, setFeatured] = useState<AnimeDisplay | null>(null);
   const [airing, setAiring] = useState<AnimeDisplay[]>([]);
   const [popular, setPopular] = useState<AnimeDisplay[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useFocusEffect(
+    useCallback(() => {
+      reloadFavorites();
+      reloadHistory();
+    }, [reloadFavorites, reloadHistory]),
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -94,6 +105,49 @@ export default function HomeScreen() {
     }
   };
 
+  const handleFavoritePress = (slug: string) => {
+    router.push({
+      pathname: "/episodes-list",
+      params: { slug },
+    });
+  };
+
+  const getContinueEpisode = (item: (typeof history)[number]) =>
+    item.progress >= 0.9 ? item.episode + 1 : item.episode;
+
+  const getLatestHistoryByAnime = (items: typeof history) => {
+    const map = new Map<string, (typeof history)[number]>();
+    items.forEach((item) => {
+      const current = map.get(item.animeSlug);
+      if (!current || item.lastWatchedAt > current.lastWatchedAt) {
+        map.set(item.animeSlug, item);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.lastWatchedAt - a.lastWatchedAt);
+  };
+
+  const handleContinueWatching = (animeSlug: string, episode: number) => {
+    router.push({
+      pathname: "/player/[slug]",
+      params: {
+        slug: animeSlug,
+        episode: String(episode),
+      },
+    });
+  };
+
+  const getHistoryTitle = (item: (typeof history)[number]) => {
+    const favoriteTitle = favorites.find((favorite) => favorite.slug === item.animeSlug)?.title;
+    if (favoriteTitle) return favoriteTitle;
+    if (item.animeTitle && item.animeTitle !== item.animeSlug) return item.animeTitle;
+
+    return decodeURIComponent(String(item.animeSlug || "Anime"))
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase()) || "Anime";
+  };
+
   const AnimeCard = ({ anime }: { anime: AnimeDisplay }) => (
     <TouchableOpacity
       onPress={() => handleAnimePress(anime.link)}
@@ -115,6 +169,63 @@ export default function HomeScreen() {
             <Text className="text-xs text-muted">{anime.classification}</Text>
           )}
         </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const HistoryCard = ({ item }: { item: (typeof history)[number] }) => {
+    const continueEpisode = getContinueEpisode(item);
+
+    return (
+      <TouchableOpacity
+        onPress={() => handleContinueWatching(item.animeSlug, continueEpisode)}
+        className="mr-3 overflow-hidden rounded-xl bg-surface"
+        style={{ width: 220 }}
+      >
+        <Image
+          source={{ uri: item.cover || FALLBACK_ANIME_IMAGE }}
+          className="w-full h-28 bg-muted"
+          resizeMode="cover"
+        />
+        <View className="p-3">
+          <Text className="text-sm font-semibold text-foreground line-clamp-2">
+            {getHistoryTitle(item)}
+          </Text>
+          <Text className="text-xs text-muted mt-1">
+            {item.progress >= 0.9 ? `Próximo episódio · ${continueEpisode}` : `Episódio ${continueEpisode}`}
+          </Text>
+          <View className="mt-2">
+            <View className="h-1.5 overflow-hidden rounded-full bg-muted/30">
+              <View
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${Math.min(100, Math.max(0, item.progress * 100))}%` }}
+              />
+            </View>
+            <Text className="mt-1 text-[10px] font-semibold text-primary">
+              {Math.round(item.progress * 100)}% assistido
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const FavoriteCard = ({ item }: { item: (typeof favorites)[number] }) => (
+    <TouchableOpacity
+      onPress={() => handleFavoritePress(item.slug)}
+      className="mr-3 overflow-hidden rounded-xl bg-surface"
+      style={{ width: 150 }}
+    >
+      <Image
+        source={{ uri: item.cover || FALLBACK_ANIME_IMAGE }}
+        className="w-full h-48 bg-muted"
+        resizeMode="cover"
+      />
+      <View className="p-2">
+        <Text className="text-sm font-semibold text-foreground line-clamp-2">
+          {item.title}
+        </Text>
+        <Text className="text-[10px] text-primary font-bold mt-1">⭐ {item.rating || "N/A"}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -189,6 +300,48 @@ export default function HomeScreen() {
               </View>
             </View>
           </TouchableOpacity>
+        )}
+
+        {history.length > 0 && (
+          <View className="mt-6">
+            <View className="px-4 mb-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="w-1 h-6 bg-primary rounded-full" />
+                <Text className="text-xl font-bold text-foreground">Continuar Assistindo</Text>
+              </View>
+              <Text className="text-xs font-semibold text-primary">{history.length}</Text>
+            </View>
+            <FlatList
+              data={getLatestHistoryByAnime(history).slice(0, 6)}
+              renderItem={({ item }) => <HistoryCard item={item} />}
+              keyExtractor={(item) => `${item.animeSlug}-${item.episode}`}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+              scrollEventThrottle={16}
+            />
+          </View>
+        )}
+
+        {favorites.length > 0 && (
+          <View className="mt-6">
+            <View className="px-4 mb-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="w-1 h-6 bg-pink-500 rounded-full" />
+                <Text className="text-xl font-bold text-foreground">Favoritos</Text>
+              </View>
+              <Text className="text-xs font-semibold text-pink-500">{favorites.length}</Text>
+            </View>
+            <FlatList
+              data={favorites.slice(0, 6)}
+              renderItem={({ item }) => <FavoriteCard item={item} />}
+              keyExtractor={(item) => item.slug}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+              scrollEventThrottle={16}
+            />
+          </View>
         )}
 
         {/* Em Exibição Section */}

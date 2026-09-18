@@ -32,6 +32,20 @@ export default function FavoritesScreen() {
     });
   };
 
+  const getContinueEpisode = (item: (typeof history)[number]) =>
+    item.progress >= 0.9 ? item.episode + 1 : item.episode;
+
+  const getLatestHistoryByAnime = (items: typeof history) => {
+    const map = new Map<string, (typeof history)[number]>();
+    items.forEach((item) => {
+      const current = map.get(item.animeSlug);
+      if (!current || item.lastWatchedAt > current.lastWatchedAt) {
+        map.set(item.animeSlug, item);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.lastWatchedAt - a.lastWatchedAt);
+  };
+
   const handleContinueWatching = (animeSlug: string, episode: number) => {
     router.push({
       pathname: "/player/[slug]",
@@ -44,6 +58,18 @@ export default function FavoritesScreen() {
 
   const handleRemoveFavorite = async (slug: string) => {
     await removeFavorite(slug);
+  };
+
+  const getHistoryTitle = (item: (typeof history)[number]) => {
+    const favoriteTitle = favorites.find((favorite) => favorite.slug === item.animeSlug)?.title;
+    if (favoriteTitle) return favoriteTitle;
+    if (item.animeTitle && item.animeTitle !== item.animeSlug) return item.animeTitle;
+
+    return decodeURIComponent(String(item.animeSlug || "Anime"))
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase()) || "Anime";
   };
 
   const AnimeCard = ({
@@ -128,11 +154,12 @@ export default function FavoritesScreen() {
         {history.length > 0 && (
           <View className="px-4 py-4 border-b border-border">
             <Text className="text-sm font-bold text-primary mb-3">CONTINUAR ASSISTINDO</Text>
-            {history.slice(0, 4).map((item) => {
+            {getLatestHistoryByAnime(history).slice(0, 4).map((item) => {
               const favoriteMatch = favorites.find((favorite) => favorite.slug === item.animeSlug);
+              const continueEpisode = getContinueEpisode(item);
               const cardAnime = {
                 slug: item.animeSlug,
-                title: item.animeTitle || item.animeSlug,
+                title: getHistoryTitle(item),
                 cover:
                   favoriteMatch?.cover ||
                   item.cover ||
@@ -146,9 +173,13 @@ export default function FavoritesScreen() {
                   key={`${item.animeSlug}-${item.episode}`}
                   anime={cardAnime}
                   showRemove={false}
-                  subtitle={`Episódio ${item.episode} · ${Math.round(item.progress * 100)}% assistido`}
+                  subtitle={
+                    item.progress >= 0.9
+                      ? `Próximo episódio · ${continueEpisode} · ${Math.round(item.progress * 100)}% assistido`
+                      : `Episódio ${continueEpisode} · ${Math.round(item.progress * 100)}% assistido`
+                  }
                   actionLabel="Continuar"
-                  onAction={() => handleContinueWatching(item.animeSlug, item.episode)}
+                  onAction={() => handleContinueWatching(item.animeSlug, continueEpisode)}
                 />
               );
             })}
