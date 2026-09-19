@@ -47,7 +47,7 @@ const CLASSIFICACOES = [
 ];
 
 // Componente responsivo de listagem
-function AnimeList({ animes, renderAnimeCard }: { animes: AnimeDisplay[], renderAnimeCard: ({ item }: { item: AnimeDisplay }) => JSX.Element }) {
+function AnimeList({ animes, renderAnimeCard }: { animes: AnimeDisplay[], renderAnimeCard: ({ item }: { item: AnimeDisplay }) => React.ReactElement }) {
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const isWeb = Platform.OS === 'web';
   

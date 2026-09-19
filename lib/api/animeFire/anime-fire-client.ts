@@ -114,6 +114,10 @@ class AnimeFireClient {
     return await this.fetchFromServer('em-lancamento', page, filters);
   }
 
+  async topAnimes(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
+    return await this.fetchFromServer('top-animes', page, filters);
+  }
+
   async listaDeAnimesLegendados(page: number = 1, filters?: FilterParams): Promise<AnimeFireResponse> {
     return await this.fetchFromServer('lista-de-animes-legendados', page, filters);
   }

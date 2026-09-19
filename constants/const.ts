@@ -15,13 +15,13 @@ export const SCRAPERAPI_CONFIG = {
 // Cache Configuration
 export const CACHE_CONFIG = {
   ENABLED: process.env.CACHE_ENABLED !== 'false',
-  TTL_MS: parseInt(process.env.CACHE_TTL_MS) || 7200000, // 2 horas
+  TTL_MS: Number(process.env.CACHE_TTL_MS ?? 7200000), // 2 horas
 };
 
 // Development Configuration
 export const DEV_CONFIG = {
   IS_LOCAL: process.env.IS_LOCAL === 'true',
-  EXPO_PORT: parseInt(process.env.EXPO_PORT) || 8082,
+  EXPO_PORT: Number(process.env.EXPO_PORT ?? 8082),
 };
 
 // Google Drive Configuration

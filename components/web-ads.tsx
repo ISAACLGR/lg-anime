@@ -84,7 +84,7 @@ export function WebInterstitialAd({ adClient, adSlot, onAdClosed }: WebInterstit
                 borderWidth: 3,
                 borderColor: "#7C3AED",
                 borderTopColor: "transparent",
-                animation: "spin 1s linear infinite",
+                transform: [{ rotate: "0deg" }],
               }}
             />
           </View>
@@ -105,7 +105,8 @@ export function WebInterstitialAd({ adClient, adSlot, onAdClosed }: WebInterstit
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                border: "1px solid #ddd",
+                borderWidth: 1,
+                borderColor: "#ddd",
               }}
             >
               <Text style={{ fontSize: 14, color: "#666", textAlign: "center" }}>
@@ -136,14 +137,6 @@ export function WebInterstitialAd({ adClient, adSlot, onAdClosed }: WebInterstit
           </View>
         )}
       </View>
-
-      {/* Adicionar CSS para animação */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </View>
   );
 }

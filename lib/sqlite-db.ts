@@ -39,7 +39,14 @@ const getNativeSqlite = () => {
 };
 
 const nativeSqlite = getNativeSqlite();
-const db = nativeSqlite?.openDatabaseSync(databaseName) ?? null;
+const db = nativeSqlite?.openDatabaseSync(databaseName) as SqliteDatabase | null;
+
+type SqliteDatabase = {
+  execSync: (query: string) => void;
+  getAllSync: <T>(query: string, params?: unknown[]) => T[];
+  getFirstSync: <T>(query: string, params?: unknown[]) => T | null;
+  runSync: (query: string, params?: unknown[]) => void;
+};
 
 const readJson = <T>(value: string | null, fallback: T): T => {
   if (!value) return fallback;

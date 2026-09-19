@@ -133,6 +133,14 @@ class AnimeFireClient {
   }
 
   /**
+   * Buscar top animes
+   */
+  async topAnimes(page: number = 1): Promise<AnimeFireResponse> {
+    const url = page === 1 ? '/api/animefire/top-animes' : `/api/animefire/top-animes/${page}`;
+    return this.makeRequest<AnimeFireResponse>(url);
+  }
+
+  /**
    * Buscar animes legendados
    */
   async listaDeAnimesLegendados(page: number = 1): Promise<AnimeFireResponse> {
