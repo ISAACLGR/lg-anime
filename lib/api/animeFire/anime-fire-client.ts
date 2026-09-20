@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { getStoredApiBaseUrl } from '@/lib/runtime-settings';
+import { ANIMEFIRE_CONFIG } from '@/lib/config/animefire.config';
 
 // Detectar se está rodando no servidor (backend) ou no cliente (browser/app)
 const isServer = typeof window === 'undefined';
@@ -151,7 +152,7 @@ class AnimeFireClient {
   }
 
   async getAnimeDetails(slug: string): Promise<any> {
-    const animeLink = `https://animefire.io/animes/${slug}`;
+    const animeLink = `${ANIMEFIRE_CONFIG.animeBaseUrl}/${slug}`;
     const candidates = await getApiCandidates();
     let lastError: unknown;
 

@@ -60,6 +60,7 @@ export interface VideoExtractionResult {
 }
 
 import { getStoredApiBaseUrl } from "@/lib/runtime-settings";
+import { ANIMEFIRE_CONFIG } from "@/lib/config/animefire.config";
 
 export interface AnimeFireApiConfig {
   baseUrl?: string;
@@ -169,7 +170,7 @@ class AnimeFireClient {
    * Obter detalhes de um anime específico
    */
   async getAnimeDetails(animeSlug: string): Promise<AnimeFireDetails> {
-    const animeUrl = `https://animefire.io/animes/${animeSlug}`;
+    const animeUrl = `${ANIMEFIRE_CONFIG.animeBaseUrl}/${animeSlug}`;
     return this.makeApiRequest<AnimeFireDetails>('/api', { anime_link: animeUrl });
   }
 
@@ -204,7 +205,7 @@ class AnimeFireClient {
    * Construir URL do episódio
    */
   buildEpisodeUrl(animeSlug: string, episodeNumber: number): string {
-    return `https://animefire.io/animes/${animeSlug}/episode-${episodeNumber}`;
+    return `${ANIMEFIRE_CONFIG.animeBaseUrl}/${animeSlug}/episode-${episodeNumber}`;
   }
 
   /**

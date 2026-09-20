@@ -6,6 +6,7 @@ import {createExpressMiddleware} from "@trpc/server/adapters/express";
 import {registerOAuthRoutes} from "./oauth";
 import {appRouter} from "../routers";
 import {createContext} from "./context";
+import { ANIMEFIRE_CONFIG } from "../../lib/config/animefire.config";
 
 // Import AnimeFire API
 const ApiFireAnime = require("../../lib/api/animeFire/api-fire-anime");
@@ -240,7 +241,7 @@ async function startServer() {
 
             const videoHeaders: any = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': episodeUrl || 'https://animefire.io/',
+                'Referer': episodeUrl || `${ANIMEFIRE_CONFIG.baseUrl}/`,
                 'Cookie': cookies
             };
 

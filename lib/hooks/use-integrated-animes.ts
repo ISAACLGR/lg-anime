@@ -6,6 +6,7 @@
 import { useCallback, useState } from 'react';
 import { AnimeData, getAiringAnimes, getPopularAnimes, searchAnimes as jikanSearch } from '@/lib/api/jikan-client';
 import { animeFireClient, VideoExtractionResult } from '@/lib/api/animefire-client';
+import { ANIMEFIRE_CONFIG } from '@/lib/config/animefire.config';
 
 export interface IntegratedAnime {
   // Dados da Jikan
@@ -98,7 +99,7 @@ export function useIntegratedAnimes(options: UseIntegratedAnimesOptions = {}) {
       rating: jikanAnime.rating ?? '',
       studios: jikanAnime.studios ?? [],
       animeFireSlug,
-      animeFireUrl: `https://animefire.io/animes/${animeFireSlug}`,
+      animeFireUrl: `${ANIMEFIRE_CONFIG.animeBaseUrl}/${animeFireSlug}`,
       hasVideo,
       videoSources,
     };

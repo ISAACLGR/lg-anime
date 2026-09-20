@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { animeFireClient } from "@/lib/api/animeFire/anime-fire-client";
 import { Platform } from "react-native";
+import { ANIMEFIRE_CONFIG } from "@/lib/config/animefire.config";
 
 interface AnimeDisplay {
   title: string;
@@ -23,7 +24,7 @@ const normalizeAnimeImage = (image?: string) => {
   if (trimmed.startsWith('//')) return `https:${trimmed}`;
   if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
 
-  return trimmed.startsWith('/') ? `https://animefire.one${trimmed}` : trimmed;
+  return trimmed.startsWith('/') ? `${ANIMEFIRE_CONFIG.baseUrl}${trimmed}` : trimmed;
 };
 
 interface FilterState {

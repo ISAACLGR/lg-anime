@@ -5,6 +5,7 @@ import axios from 'axios';
 
 import { useFavorites } from '@/lib/hooks/use-favorites';
 import { getStoredApiBaseUrl } from '@/lib/runtime-settings';
+import { ANIMEFIRE_CONFIG } from '@/lib/config/animefire.config';
 
 const DEFAULT_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const getApiCandidates = async () => {
@@ -105,7 +106,7 @@ export default function EpisodesListScreen() {
       setError(null);
 
       const finalSlug = normalizedSlug || normalizeSlug(slug);
-      const animeLink = `https://animefire.one/anime/${finalSlug}`;
+      const animeLink = `${ANIMEFIRE_CONFIG.animeSingularBaseUrl}/${finalSlug}`;
       console.log('[episodes-list] URL do AnimeFire:', animeLink);
 
       const effectiveApiBaseUrl = await resolveApiBaseUrl();
@@ -166,7 +167,7 @@ export default function EpisodesListScreen() {
   const buildEpisodeUrl = (animeSlug: string | string[] | undefined, episodeNumber: number) => {
     const finalSlug = normalizeSlug(animeSlug);
     if (!finalSlug) return '#';
-    return `https://animefire.one/anime/${finalSlug}/episode-${episodeNumber}`;
+    return `${ANIMEFIRE_CONFIG.animeSingularBaseUrl}/${finalSlug}/episode-${episodeNumber}`;
   };
 
   const handlePlayEpisode = (episodeUrl: string, episodeNumber: number) => {

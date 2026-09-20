@@ -17,6 +17,7 @@ import { WebView } from "react-native-webview";
 import { getStoredApiBaseUrl } from "@/lib/runtime-settings";
 import { useWatchHistory } from "@/lib/hooks/use-watch-history";
 import { listFavorites } from "@/lib/sqlite-db";
+import { ANIMEFIRE_CONFIG } from "@/lib/config/animefire.config";
 
 // Detectar se está no servidor ou cliente
 const isServer = typeof window === "undefined";
@@ -763,7 +764,7 @@ export default function PlayerScreen() {
 
     if (!decoded || decoded === "#" || decoded === "undefined") {
       if (resolvedSlug && resolvedEpisode) {
-        return `https://animefire.one/anime/${resolvedSlug}/episode-${resolvedEpisode}`;
+        return `${ANIMEFIRE_CONFIG.animeSingularBaseUrl}/${resolvedSlug}/episode-${resolvedEpisode}`;
       }
       return "";
     }
@@ -778,7 +779,7 @@ export default function PlayerScreen() {
     }
 
     if (resolvedSlug && resolvedEpisode) {
-      return `https://animefire.one/anime/${resolvedSlug}/episode-${resolvedEpisode}`;
+      return `${ANIMEFIRE_CONFIG.animeSingularBaseUrl}/${resolvedSlug}/episode-${resolvedEpisode}`;
     }
 
     return decoded;

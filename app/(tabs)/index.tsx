@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { animeFireClient } from "@/lib/api/animeFire/anime-fire-client";
 import { useFavorites } from "@/lib/hooks/use-favorites";
 import { useWatchHistory } from "@/lib/hooks/use-watch-history";
+import { ANIMEFIRE_CONFIG } from "@/lib/config/animefire.config";
 
 interface AnimeDisplay {
   title: string;
@@ -25,7 +26,7 @@ const normalizeAnimeImage = (image?: string) => {
   if (trimmed.startsWith('//')) return `https:${trimmed}`;
   if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
 
-  return trimmed.startsWith('/') ? `https://animefire.one${trimmed}` : trimmed;
+  return trimmed.startsWith('/') ? `${ANIMEFIRE_CONFIG.baseUrl}${trimmed}` : trimmed;
 };
 
 export default function HomeScreen() {
