@@ -40,7 +40,8 @@ const env = {
 
 const config: ExpoConfig = {
   name: env.appName,
-  slug: env.appSlug,
+  slug: "anime",
+  owner: "reneduartes-organization",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -136,6 +137,11 @@ const config: ExpoConfig = {
     typedRoutes: true,
     reactCompiler: true,
   },
+  extra: {
+    eas: {
+      projectId: "65624da7-a7be-45e8-97e2-69f2783435dd"
+    }
+  }
 };
 
 export default config;
