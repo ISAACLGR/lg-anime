@@ -32,7 +32,6 @@ yarn-error.*
 
 # local env files
 .env*.local
-.env
 
 # local debug / generated artifacts
 debug-*.js
