@@ -2,6 +2,7 @@
   "name": "app-template",
   "version": "1.0.0",
   "private": true,
+  "main": "expo-router/entry",
   "scripts": {
     "dev": "npx concurrently -k \"npm run dev:server\" \"npm run dev:metro\"",
     "dev:server": "cross-env NODE_ENV=development npx tsx watch server/_core/index.ts",
