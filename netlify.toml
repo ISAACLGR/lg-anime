@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  EXPO_PUBLIC_API_URL = "https://lg-anime.onrender.com"
 
 [[redirects]]
   from = "/_sitemap"
