@@ -1,0 +1,19 @@
+{
+  "name": "LG Anime Backend",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [3000, 8081],
+  "postCreateCommand": "npm install -g pnpm && pnpm install",
+  "remoteUser": "node"
+}
