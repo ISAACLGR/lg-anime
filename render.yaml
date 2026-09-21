@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: lg-anime-backend
+    env: node
+    buildCommand: pnpm install && pnpm run build
+    startCommand: pnpm start
+    envVars:
+      - key: DATABASE_URL
+        value: mysql://user:password@localhost:3306/animefire
+      - key: SCRAPERAPI_KEY
+        value: 08d973cbf0af4a48f4f5dbb373475b9d
+      - key: SCRAPERAPI_URL
+        value: https://api.scraperapi.com
+      - key: SCRAPERAPI_DEVICE_TYPE
+        value: desktop
+      - key: SCRAPERAPI_COUNTRY_CODE
+        value: br
+      - key: CACHE_TTL_MS
+        value: 7200000
+      - key: IS_LOCAL
+        value: false
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
