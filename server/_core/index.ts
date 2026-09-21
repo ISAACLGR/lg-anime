@@ -76,6 +76,16 @@ async function startServer() {
         }
     });
 
+    app.get("/api/animefire/top-animes/:page?", async (req, res) => {
+        try {
+            const result = await apiFireAnime.emLancamento(req);
+            res.json(result);
+        } catch (error) {
+            console.error("[AnimeFire] top-animes error:", error);
+            res.status(500).json({error: "Failed to fetch data from AnimeFire"});
+        }
+    });
+
     app.get("/api/animefire/pesquisar", async (req, res) => {
         try {
             const result = await apiFireAnime.pesquisar(req);
