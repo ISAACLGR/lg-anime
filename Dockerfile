@@ -34,8 +34,8 @@ RUN npx playwright install --with-deps chromium || true
 # Copy source code
 COPY . .
 
-# Build the server (build both API and web assets)
-RUN pnpm run build:all
+# Build only the backend (not the web frontend)
+RUN pnpm run build:vercel
 
 # Expose port
 EXPOSE 3000
