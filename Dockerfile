@@ -54,5 +54,5 @@ RUN pnpm run build:vercel
 # Expose port
 EXPOSE 3000
 
-# Start Squid proxy and the server
-CMD sh -c "squid -z && squid -N -d 1 && pnpm start"
+# Start Squid proxy in background and the server
+CMD sh -c "squid -z && squid -N -d 1 & pnpm start"
