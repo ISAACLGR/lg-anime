@@ -20,6 +20,8 @@ SCRAPERAPI_KEY=<sua-chave-aqui>
 CACHE_ENABLED=false
 IS_LOCAL=false
 NODE_ENV=production
+RETRY_ATTEMPTS=3
+RETRY_DELAY_MS=2000
 ```
 
 **Encontrar sua chave ScraperAPI:**
