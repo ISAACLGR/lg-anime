@@ -22,8 +22,8 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm using corepack (works better on Alpine)
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
