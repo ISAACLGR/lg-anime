@@ -8,7 +8,7 @@
     "dev:server": "cross-env NODE_ENV=development npx tsx watch server/_core/index.ts",
     "dev:metro": "cross-env EXPO_USE_METRO_WORKSPACE_ROOT=1 EXPO_PORT=8081 npx expo start --web --port 8081",
     "build": "esbuild server/_core/index.ts --platform=node --bundle --format=cjs --outdir=dist --external:playwright --external:playwright-core",
-    "build:web": "npx expo export -p web && node scripts/move-dist.js",
+    "build:web": "node scripts/pre-build-web.js && npx expo export -p web && node scripts/move-dist.js",
     "build:vercel": "esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/api",
     "build:all": "pnpm run build:vercel && pnpm run build:web",
     "start": "cross-env NODE_ENV=production node dist/api/index.js",

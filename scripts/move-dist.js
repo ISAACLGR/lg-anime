@@ -1,15 +1,30 @@
 const fs = require('fs');
 const path = require('path');
 
-// Move dist/web to dist for Vercel
-const sourceDir = path.join(__dirname, '..', 'dist', 'web');
 const targetDir = path.join(__dirname, '..', 'dist');
+const sourceDir = path.join(__dirname, '..', 'dist', 'web');
+const tempApiDir = path.join(__dirname, '..', '.temp-api');
+const apiDir = path.join(targetDir, 'api');
 
+// Restore api folder from temp location if it exists
+if (fs.existsSync(tempApiDir)) {
+  // Remove existing api folder if it exists
+  if (fs.existsSync(apiDir)) {
+    fs.rmSync(apiDir, { recursive: true, force: true });
+  }
+  // Copy api folder back from temp
+  fs.cpSync(tempApiDir, apiDir, { recursive: true });
+  console.log('Restored dist/api from .temp-api');
+  // Clean up temp dir
+  fs.rmSync(tempApiDir, { recursive: true, force: true });
+}
+
+// If dist/web exists, move its contents to dist
 if (fs.existsSync(sourceDir)) {
-  // Remove old dist content except web folder
+  // Remove old dist content except web and api folders
   const files = fs.readdirSync(targetDir);
   for (const file of files) {
-    if (file !== 'web') {
+    if (file !== 'web' && file !== 'api') {
       const filePath = path.join(targetDir, file);
       fs.rmSync(filePath, { recursive: true, force: true });
     }
@@ -27,5 +42,6 @@ if (fs.existsSync(sourceDir)) {
   fs.rmdirSync(sourceDir);
   console.log('? Moved dist/web to dist');
 } else {
-  console.log('?? dist/web not found');
+  // expo export put files directly in dist, api folder already restored
+  console.log('? Web files already in dist, api folder restored');
 }
