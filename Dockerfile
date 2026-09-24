@@ -16,8 +16,8 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Build the server
-RUN pnpm run build
+# Build the server (build both API and web assets)
+RUN pnpm run build:all
 
 # Expose port
 EXPOSE 3000

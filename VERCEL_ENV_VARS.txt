@@ -1,0 +1,34 @@
+# Variáveis de Ambiente para Vercel
+# Configure em: https://vercel.com/reneduartes-projects/lg-anime/settings/environment-variables
+
+# Banco de Dados
+DATABASE_URL=mysql://user:password@aws.connect.psdb.cloud/animefire
+
+# ScraperAPI
+SCRAPERAPI_KEY=08d973cbf0af4a48f4f5dbb373475b9d
+SCRAPERAPI_URL=https://api.scraperapi.com
+SCRAPERAPI_DEVICE_TYPE=desktop
+SCRAPERAPI_COUNTRY_CODE=br
+
+# Cache
+CACHE_ENABLED=true
+CACHE_TTL_MS=7200000
+USE_SCRAPERAPI=false
+
+# Frontend
+EXPO_PUBLIC_API_URL=https://lg-anime.vercel.app
+EXPO_PORT=8082
+
+# Firebase
+EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyBXsFPxfEUTE3_hrfe_MJQk3ZB5ZWUERsc
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=login-172916.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=login-172916
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=login-172916.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=956400679808
+EXPO_PUBLIC_FIREBASE_APP_ID=1:956400679808:web:d469e80500b12fe8de1f65
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=956400679808-dm4l3cb9278cgv2md87dc38ivonpk9vs.apps.googleusercontent.com
+
+# Outros
+IS_LOCAL=false
+OAUTH_SERVER_URL=http://localhost:3001
