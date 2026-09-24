@@ -15,9 +15,13 @@ RUN apk add --no-cache \
     ttf-freefont \
     && rm -rf /var/cache/apk/*
 
+# Create symlink for Playwright to find Chromium
+RUN ln -s /usr/bin/chromium-browser /usr/bin/chromium || true
+
 # Set Playwright to use system Chromium
 ENV PLAYWRIGHT_BROWSERS_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
