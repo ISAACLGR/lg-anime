@@ -147,9 +147,76 @@ async function startServer() {
                 timestamp: new Date().toISOString(),
                 cache: stats
             });
-        } catch (error: any) {
-            console.error("[Cache] Error getting stats:", error);
+        } catch (error) {
+            console.error("[AnimeFire] cache stats error:", error);
             res.status(500).json({error: "Failed to get cache stats"});
+        }
+    });
+
+    // Debug endpoints for ScraperAPI comparison
+    app.get("/api/debug/with-scraper", async (req, res) => {
+        try {
+            const ClienteAnimeFire = require("../../lib/api/animeFire/cliente-anime-fire");
+            const cliente = new ClienteAnimeFire();
+            
+            // Force ScraperAPI usage
+            const originalUseScraperApi = process.env.USE_SCRAPERAPI;
+            process.env.USE_SCRAPERAPI = 'true';
+            
+            const testUrl = 'https://animefire.one/animes/lancamentos?page=1';
+            const result = await cliente.fetchAnimesFromPage(axios, testUrl);
+            
+            // Restore original value
+            process.env.USE_SCRAPERAPI = originalUseScraperApi;
+            
+            res.json({
+                method: 'ScraperAPI',
+                url: testUrl,
+                success: true,
+                animesCount: result.animes?.length || 0,
+                pagination: result.pagination,
+                sampleAnimes: result.animes?.slice(0, 3) || []
+            });
+        } catch (error) {
+            console.error("[Debug] with-scraper error:", error);
+            res.status(500).json({
+                method: 'ScraperAPI',
+                success: false,
+                error: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
+    app.get("/api/debug/without-scraper", async (req, res) => {
+        try {
+            const ClienteAnimeFire = require("../../lib/api/animeFire/cliente-anime-fire");
+            const cliente = new ClienteAnimeFire();
+            
+            // Force ScraperAPI disabled
+            const originalUseScraperApi = process.env.USE_SCRAPERAPI;
+            process.env.USE_SCRAPERAPI = 'false';
+            
+            const testUrl = 'https://animefire.one/animes/lancamentos?page=1';
+            const result = await cliente.fetchAnimesFromPage(axios, testUrl);
+            
+            // Restore original value
+            process.env.USE_SCRAPERAPI = originalUseScraperApi;
+            
+            res.json({
+                method: 'Direct',
+                url: testUrl,
+                success: true,
+                animesCount: result.animes?.length || 0,
+                pagination: result.pagination,
+                sampleAnimes: result.animes?.slice(0, 3) || []
+            });
+        } catch (error) {
+            console.error("[Debug] without-scraper error:", error);
+            res.status(500).json({
+                method: 'Direct',
+                success: false,
+                error: error instanceof Error ? error.message : String(error)
+            });
         }
     });
 
