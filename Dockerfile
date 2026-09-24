@@ -26,7 +26,7 @@ ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 
 # Configure Squid proxy (open proxy for local use)
 RUN echo "http_port 3128" > /etc/squid/squid.conf && \
-    echo "acl localnet src 0.0.0.0/0" >> /etc/squid/squid.conf && \
+    echo "acl localnet src all" >> /etc/squid/squid.conf && \
     echo "http_access allow localnet" >> /etc/squid/squid.conf && \
     echo "http_access deny all" >> /etc/squid/squid.conf && \
     echo "cache deny all" >> /etc/squid/squid.conf && \
